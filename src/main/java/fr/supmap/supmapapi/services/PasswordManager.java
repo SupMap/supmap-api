@@ -5,7 +5,6 @@ import org.springframework.security.crypto.bcrypt.BCrypt;
 /**
  * The type Password manager.
  *
- * @author Mathéo RIO (matheo.rio@supinfo.com)
  */
 public class PasswordManager {
 

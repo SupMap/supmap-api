@@ -19,7 +19,6 @@ import java.util.Collections;
 /**
  * JWT Token filter
  *
- * @author Mathéo RIO (matheo.rio@supinfo.com)
  */
 public class JwtTokenFilter extends OncePerRequestFilter {
 

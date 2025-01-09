@@ -5,6 +5,8 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import fr.supmap.supmapapi.model.entity.table.User;
+import fr.supmap.supmapapi.repository.UserRepository;
 import fr.supmap.supmapapi.services.exceptions.NotAuthorizeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,13 +21,12 @@ import java.util.Date;
 /**
  * The type Token manager.
  *
- * @author Mathéo RIO (matheo.rio@supinfo.com)
  */
 @Service
 public class TokenManager {
 
     private static final Logger log = LoggerFactory.getLogger(TokenManager.class);
-    //private static UserRepository userRepository;
+    private static UserRepository userRepository;
 
     private static String secretKey;
 
@@ -35,10 +36,10 @@ public class TokenManager {
      * @param userRepository the user repository
      * @param secretKey      the secret key
      */
-    //public TokenManager(UserRepository userRepository, @Value("${token.secret-key}") String secretKey) {
-    //    TokenManager.userRepository = userRepository;
-    //    TokenManager.secretKey = secretKey;
-    //}
+    public TokenManager(UserRepository userRepository, @Value("${token.secret-key}") String secretKey) {
+        TokenManager.userRepository = userRepository;
+        TokenManager.secretKey = secretKey;
+    }
 
     /**
      * Gets user (userId) from token.
@@ -67,9 +68,9 @@ public class TokenManager {
      *
      * @return the user
      */
-    //public static User getUser() {
-    //    return userRepository.findById(Integer.parseInt(SecurityContextHolder.getContext().getAuthentication().getName())).orElseThrow(() -> new ResponseStatusException(HttpStatus.PRECONDITION_FAILED));
-    //}
+    public static User getUser() {
+        return userRepository.findById(Integer.parseInt(SecurityContextHolder.getContext().getAuthentication().getName())).orElseThrow(() -> new ResponseStatusException(HttpStatus.PRECONDITION_FAILED));
+    }
 
     /**
      * Create token string.
