@@ -1,38 +1,38 @@
-/*
- * Copyright (C)  2023 Société Exaegis SIREN : 538700980  - All Rights Reserved.
- * Unauthorized copying of this file, via any medium is strictly prohibited
- * Proprietary and confidential.
- */
-
 package fr.supmap.supmapapi;
 
-import fr.supmap.supmapapi.services.JwtTokenFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-/**
- * The type Security config.
- */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(Customizer.withDefaults())
-                .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests((authorizeRequests) ->
-                        authorizeRequests
-                                .anyRequest().permitAll()
-                ).addFilterBefore(new JwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+                .csrf(AbstractHttpConfigurer::disable) // Désactiver CSRF pour simplifier les tests locaux
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/register", "/auth/login").permitAll() // Routes classiques
+                        .requestMatchers("/auth/login/oauth2/**", "/oauth2/**").permitAll() // Routes OAuth2
+                        .anyRequest().authenticated() // Protéger les autres routes
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .loginPage("/oauth2/authorization/google") // Page dédiée pour OAuth2
+                        .defaultSuccessUrl("/auth/login/oauth2/success")
+                        .failureUrl("/auth/login/oauth2/failure")
+                );
+
         return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 }
