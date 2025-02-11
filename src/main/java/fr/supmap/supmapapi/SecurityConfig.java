@@ -27,7 +27,8 @@ public class SecurityConfig {
                                 .requestMatchers("/swagger-ui/**",
                                         "/v3/api-docs/**",
                                         "/swagger-ui.html",
-                                        "/swagger-resources/**").permitAll()
+                                        "/swagger-resources/**",
+                                        "/directions/**").permitAll()
                                 .anyRequest().authenticated()
                 ).addFilterBefore(new JwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
         return http.build();
@@ -40,6 +41,7 @@ public class SecurityConfig {
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/swagger-ui.html",
-                        "/swagger-resources/**");
+                        "/swagger-resources/**",
+                        "/directions/**");
     }
 }
