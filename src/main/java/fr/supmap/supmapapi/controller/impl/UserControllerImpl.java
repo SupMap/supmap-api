@@ -27,12 +27,10 @@ import static fr.supmap.supmapapi.services.PasswordManager.hashPassword;
 public class UserControllerImpl implements UserController {
 
     private final UserRepository userRepository;
-    private final TokenManager tokenManager;
     private final Logger log = LoggerFactory.getLogger(UserControllerImpl.class);
 
-    public UserControllerImpl(UserRepository userRepository, TokenManager tokenManager) {
+    public UserControllerImpl(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.tokenManager = tokenManager;
     }
 
     @Override

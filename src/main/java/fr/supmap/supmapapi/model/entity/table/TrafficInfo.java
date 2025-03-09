@@ -8,6 +8,10 @@ import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import org.locationtech.jts.geom.Point;
+
 @Getter
 @Setter
 @Entity
@@ -27,7 +31,8 @@ public class TrafficInfo {
     @Column(name = "recorded_at", nullable = false)
     private Instant recordedAt;
 
+    @JdbcTypeCode(SqlTypes.GEOMETRY)
     @Column(name = "location", columnDefinition = "geography not null")
-    private Object location;
+    private Point location;
 
 }

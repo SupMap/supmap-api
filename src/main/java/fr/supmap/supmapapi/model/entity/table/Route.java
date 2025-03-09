@@ -8,6 +8,11 @@ import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.LineString;
+
 @Getter
 @Setter
 @Entity
@@ -21,7 +26,7 @@ public class Route {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private fr.supmap.supmapapi.model.entity.table.User user;
+    private User user;
 
     @Column(name = "total_distance")
     private Double totalDistance;
@@ -34,13 +39,15 @@ public class Route {
     @Column(name = "calculated_at", nullable = false)
     private Instant calculatedAt;
 
-    @Column(name = "start_location", columnDefinition = "geography not null")
-    private Object startLocation;
+    // Utiliser le type Point pour la localisation de départ et d'arrivée
+    @Column(name = "start_location", columnDefinition = "geography(Point,4326) not null")
+    private Point startLocation;
 
-    @Column(name = "end_location", columnDefinition = "geography not null")
-    private Object endLocation;
+    @Column(name = "end_location", columnDefinition = "geography(Point,4326) not null")
+    private Point endLocation;
 
-    @Column(name = "route_geometry", columnDefinition = "geography not null")
-    private Object routeGeometry;
-
+    // Utiliser le type LineString pour la géométrie du trajet
+    @JdbcTypeCode(SqlTypes.GEOMETRY)
+    @Column(name = "route_geometry", columnDefinition = "geography(LineString,4326) not null")
+    private LineString routeGeometry;
 }
