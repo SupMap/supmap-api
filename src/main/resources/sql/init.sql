@@ -22,21 +22,27 @@ CREATE TABLE Incident_categories (
 );
 
 -- Table des types d'incidents spécifiques (ex: carambolage, sens inversé, etc.)
-CREATE TABLE Incident_types (
-                                type_id SERIAL PRIMARY KEY,
-                                category_id INT NOT NULL REFERENCES Incident_categories(category_id),
-                                name VARCHAR(50) NOT NULL UNIQUE
+CREATE TABLE incidents (
+                           incident_id SERIAL PRIMARY KEY,
+                           type_id INT NOT NULL REFERENCES incident_types(type_id),
+                           latitude DOUBLE PRECISION NOT NULL,
+                           longitude DOUBLE PRECISION NOT NULL,
+                           created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                           confirmed_by_user_id INT REFERENCES users(user_id)
 );
+
 
 -- Table des incidents
 -- Utilise un type géographique pour la localisation (Point en SRID 4326)
-CREATE TABLE Incidents (
+CREATE TABLE incidents (
                            incident_id SERIAL PRIMARY KEY,
-                           type_id INT REFERENCES Incident_types(type_id),
-                           location GEOGRAPHY(Point,4326) NOT NULL,
-                           timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                           confirmed_by_user_id INT REFERENCES Users(user_id)
+                           type VARCHAR(50) NOT NULL,
+                           latitude DOUBLE PRECISION NOT NULL,
+                           longitude DOUBLE PRECISION NOT NULL,
+                           created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                           confirmed_by_user_id INT REFERENCES users(user_id)
 );
+
 
 -- Table des itinéraires (Routes)
 -- On stocke le point de départ, d'arrivée et la géométrie complète de l'itinéraire (LINESTRING)

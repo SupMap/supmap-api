@@ -1,42 +1,39 @@
 package fr.supmap.supmapapi.model.entity.table;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
-
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-import org.locationtech.jts.geom.Point;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "incidents")
 public class Incident {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "incidents_id_gen")
-    @SequenceGenerator(name = "incidents_id_gen", sequenceName = "incidents_incident_id_seq", allocationSize = 1)
-    @Column(name = "incident_id", nullable = false)
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "incident_id")
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "type_id")
-    private IncidentType type;
+    @JoinColumn(name = "type_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private IncidentType incidentType;
 
-    @NotNull
-    @ColumnDefault("CURRENT_TIMESTAMP")
-    @Column(name = "\"timestamp\"", nullable = false)
-    private Instant timestamp;
+    @Column(nullable = false)
+    private Double latitude;
+
+    @Column(nullable = false)
+    private Double longitude;
+
+    @Column(nullable = false)
+    private Instant createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "confirmed_by_user_id")
-    private fr.supmap.supmapapi.model.entity.table.User confirmedByUser;
-
-    @JdbcTypeCode(SqlTypes.GEOMETRY)
-    @Column(name = "location", columnDefinition = "geography(Point,4326) not null")
-    private Point location;
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private User confirmedByUser;
 }
