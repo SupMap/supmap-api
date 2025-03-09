@@ -9,11 +9,9 @@ import fr.supmap.supmapapi.model.entity.table.User;
 import fr.supmap.supmapapi.repository.UserRepository;
 import fr.supmap.supmapapi.services.PasswordManager;
 import fr.supmap.supmapapi.services.TokenManager;
-import io.swagger.v3.oas.annotations.Operation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 

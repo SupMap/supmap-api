@@ -1,6 +1,8 @@
 package fr.supmap.supmapapi.model.entity.table;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,10 +17,13 @@ public class IncidentType {
     @Column(name = "type_id", nullable = false)
     private Integer id;
 
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "category_id", nullable = false)
     private IncidentCategory category;
 
+    @Size(max = 50)
+    @NotNull
     @Column(name = "name", nullable = false, length = 50)
     private String name;
 

@@ -1,11 +1,11 @@
 package fr.supmap.supmapapi.model.entity.table;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 
 @Getter
@@ -23,18 +23,15 @@ public class Incident {
     @JoinColumn(name = "type_id")
     private IncidentType type;
 
-    @Column(name = "latitude", nullable = false, precision = 10, scale = 7)
-    private BigDecimal latitude;
-
-    @Column(name = "longitude", nullable = false, precision = 10, scale = 7)
-    private BigDecimal longitude;
-
+    @NotNull
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "\"timestamp\"", nullable = false)
     private Instant timestamp;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "confirmed_by_user_id")
-    private User confirmedByUser;
+    private fr.supmap.supmapapi.model.entity.table.User confirmedByUser;
 
+    @Column(name = "location", columnDefinition = "geography not null")
+    private Object location;
 }
