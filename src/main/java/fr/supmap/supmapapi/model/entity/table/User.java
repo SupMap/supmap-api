@@ -1,11 +1,12 @@
 package fr.supmap.supmapapi.model.entity.table;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
-import java.math.BigInteger;
 import java.time.Instant;
 
 @Getter
@@ -19,26 +20,34 @@ public class User {
     @Column(name = "user_id", nullable = false)
     private Integer id;
 
+    @Size(max = 255)
+    @NotNull
     @Column(name = "username", nullable = false)
     private String username;
 
+    @Size(max = 255)
     @Column(name = "name")
     private String name;
 
+    @Size(max = 255)
     @Column(name = "second_name")
     private String secondName;
 
+    @Size(max = 255)
+    @NotNull
     @Column(name = "email", nullable = false)
     private String email;
 
+    @Size(max = 255)
+    @NotNull
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    @NotNull
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "creation_date", nullable = false)
     private Instant creationDate;
 
     @Column(name = "oauth2_id")
-    private BigInteger oauth2Id;
-
+    private Integer oauth2Id;
 }

@@ -7,6 +7,6 @@ public interface DirectionController {
 
     @GetMapping("/directions")
     String getDirections(@RequestParam(value="origin") String origin,
-                         @RequestParam(value = "mode", defaultValue = "driving") String mode,
+                         @RequestParam(value="mode", defaultValue="car") String mode,
                          @RequestParam(value="destination") String destination);
 }

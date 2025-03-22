@@ -1,11 +1,10 @@
 package fr.supmap.supmapapi.model.entity.table;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 
 @Getter
@@ -13,28 +12,28 @@ import java.time.Instant;
 @Entity
 @Table(name = "incidents")
 public class Incident {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "incidents_id_gen")
-    @SequenceGenerator(name = "incidents_id_gen", sequenceName = "incidents_incident_id_seq", allocationSize = 1)
-    @Column(name = "incident_id", nullable = false)
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "incident_id")
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "type_id")
-    private IncidentType type;
+    @JoinColumn(name = "type_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private IncidentType incidentType;
 
-    @Column(name = "latitude", nullable = false, precision = 10, scale = 7)
-    private BigDecimal latitude;
+    @Column(nullable = false)
+    private Double latitude;
 
-    @Column(name = "longitude", nullable = false, precision = 10, scale = 7)
-    private BigDecimal longitude;
+    @Column(nullable = false)
+    private Double longitude;
 
-    @ColumnDefault("CURRENT_TIMESTAMP")
-    @Column(name = "\"timestamp\"", nullable = false)
-    private Instant timestamp;
+    @Column(nullable = false)
+    private Instant createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "confirmed_by_user_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User confirmedByUser;
-
 }
