@@ -2,7 +2,9 @@ package fr.supmap.supmapapi.controller.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import fr.supmap.supmapapi.controller.DirectionController;
+import fr.supmap.supmapapi.model.dto.DirectionsDto;
 import fr.supmap.supmapapi.model.entity.table.Route;
 import fr.supmap.supmapapi.model.entity.table.User;
 import fr.supmap.supmapapi.repository.RouteRepository;
@@ -37,6 +39,7 @@ public class DirectionControllerImpl implements DirectionController {
     @Autowired
     private UserRepository userRepository;
 
+
     /**
      * @param origin      Peut être au format "lat,lon" ou une adresse (ex: "Paris")
      * @param mode        "car", "bike", "foot", etc.
@@ -44,8 +47,7 @@ public class DirectionControllerImpl implements DirectionController {
      * @return            La réponse JSON brute de l'API GraphHopper
      */
     @Override
-    public String getDirections(String origin, String mode, String destination) {
-        // Convertir les paramètres en coordonnées
+    public String getDirection(String origin, String mode, String destination) {
         String originCoordinates = getCoordinates(origin);
         String destinationCoordinates = getCoordinates(destination);
 
@@ -62,15 +64,12 @@ public class DirectionControllerImpl implements DirectionController {
         log.info("GET " + url);
         String ghResponse = restTemplate.getForObject(url, String.class);
 
-        // Sauvegarder la route si l'utilisateur est connecté
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            // Récupération de l'ID utilisateur à partir du token (contenu dans le nom)
             Integer userId = Integer.parseInt(authentication.getName());
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur non trouvé"));
 
-            // Parser la réponse GraphHopper pour extraire distance, temps et polyline
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(ghResponse);
             JsonNode pathsNode = root.path("paths");
@@ -80,16 +79,14 @@ public class DirectionControllerImpl implements DirectionController {
                 double timeMs = firstPath.path("time").asDouble();
                 String encodedPolyline = firstPath.path("points").asText();
 
-                // Conversion des coordonnées en objets JTS
                 Point startPoint = GeoUtils.parsePoint(originCoordinates);
                 Point endPoint = GeoUtils.parsePoint(destinationCoordinates);
-                // Conversion de la polyline en LineString
                 LineString routeGeometry = GeoUtils.decodePolylineToLineString(encodedPolyline);
 
                 Route route = new Route();
                 route.setUser(user);
                 route.setTotalDistance(distance);
-                route.setTotalDuration(timeMs / 1000.0); // Conversion en secondes
+                route.setTotalDuration(timeMs / 1000.0);
                 route.setStartLocation(startPoint);
                 route.setEndLocation(endPoint);
                 route.setRouteGeometry(routeGeometry);
@@ -106,12 +103,62 @@ public class DirectionControllerImpl implements DirectionController {
     }
 
     /**
-     * Retourne les coordonnées au format "lat,lon" pour une adresse ou chaîne de texte.
-     * Si la chaîne contient déjà une virgule, on considère qu'il s'agit de coordonnées.
-     *
-     * @param location Adresse ou coordonnées
-     * @return Chaîne "lat,lon"
+     * @param origin      Peut être au format "lat,lon" ou une adresse (ex: "Paris")
+     * @param mode        "car", "bike", "foot", etc.
+     * @param destination Identique à origin (coordonnées ou texte)
+     * @return            Les 3 itinéraires alternatifs (le plus rapide, le plus économique, sans péage)
      */
+    @Override
+    public DirectionsDto getDirections(String origin, String mode, String destination) {
+        String originCoordinates = getCoordinates(origin);
+        String destinationCoordinates = getCoordinates(destination);
+
+        RestTemplate restTemplate = new RestTemplate();
+        DirectionsDto dto = new DirectionsDto();
+
+        try {
+            String urlFastest = "https://graphhopper.com/api/1/route?"
+                    + "point=" + originCoordinates
+                    + "&point=" + destinationCoordinates
+                    + "&vehicle=" + mode
+                    + "&locale=fr"
+                    + "&instructions=true"
+                    + "&calc_points=true"
+                    + "&key=" + graphhopperApiKey;
+            String responseFastest = restTemplate.getForObject(urlFastest, String.class);
+            dto.setFastest(responseFastest);
+
+            String urlNoToll = "https://graphhopper.com/api/1/route?"
+                    + "point=" + originCoordinates
+                    + "&point=" + destinationCoordinates
+                    + "&vehicle=" + mode
+                    + "&avoid=toll"
+                    + "&locale=fr"
+                    + "&instructions=true"
+                    + "&calc_points=true"
+                    + "&key=" + graphhopperApiKey;
+            String responseNoToll = restTemplate.getForObject(urlNoToll, String.class);
+            dto.setNoToll(responseNoToll);
+
+            String urlEconomical = "https://graphhopper.com/api/1/route?"
+                    + "point=" + originCoordinates
+                    + "&point=" + destinationCoordinates
+                    + "&vehicle=" + mode
+                    + "&weighting=shortest"
+                    + "&locale=fr"
+                    + "&instructions=true"
+                    + "&calc_points=true"
+                    + "&key=" + graphhopperApiKey;
+            String responseEconomical = restTemplate.getForObject(urlEconomical, String.class);
+            dto.setEconomical(responseEconomical);
+
+            return dto;
+        } catch (Exception e) {
+            log.error("Erreur lors du calcul des itinéraires alternatifs", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erreur lors du calcul des itinéraires alternatifs", e);
+        }
+    }
+
     private String getCoordinates(String location) {
         if (location.contains(",")) {
             return location;
