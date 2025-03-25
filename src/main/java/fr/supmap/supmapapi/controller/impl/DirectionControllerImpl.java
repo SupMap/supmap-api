@@ -32,6 +32,9 @@ public class DirectionControllerImpl implements DirectionController {
     @Value("${graphhopper.api-key}")
     private String graphhopperApiKey;
 
+    @Value("${graphhopper.base-url}")
+    private String graphhopperBaseUrl;
+
     @Autowired
     private RouteRepository routeRepository;
 
@@ -50,14 +53,12 @@ public class DirectionControllerImpl implements DirectionController {
         String originCoordinates = getCoordinates(origin);
         String destinationCoordinates = getCoordinates(destination);
 
-        String url = "https://graphhopper.com/api/1/route?"
+        String url = graphhopperBaseUrl + "/route?"
                 + "point=" + originCoordinates
                 + "&point=" + destinationCoordinates
-                + "&vehicle=" + mode
-                + "&locale=fr"
-                + "&instructions=true"
-                + "&calc_points=true"
-                + "&key=" + graphhopperApiKey;
+                + "&profile=" + mode;
+
+        log.info(url);
 
         RestTemplate restTemplate = new RestTemplate();
         log.info("GET " + url);
@@ -116,38 +117,24 @@ public class DirectionControllerImpl implements DirectionController {
         DirectionsDto dto = new DirectionsDto();
 
         try {
-            String urlFastest = "https://graphhopper.com/api/1/route?"
+            String urlFastest = graphhopperBaseUrl + "/route?"
                     + "point=" + originCoordinates
                     + "&point=" + destinationCoordinates
-                    + "&vehicle=" + mode
-                    + "&locale=fr"
-                    + "&instructions=true"
-                    + "&calc_points=true"
-                    + "&key=" + graphhopperApiKey;
+                    + "&profile=" + mode;
             String responseFastest = restTemplate.getForObject(urlFastest, String.class);
             dto.setFastest(responseFastest);
 
-            String urlNoToll = "https://graphhopper.com/api/1/route?"
+            String urlNoToll = graphhopperBaseUrl + "/route?"
                     + "point=" + originCoordinates
                     + "&point=" + destinationCoordinates
-                    + "&vehicle=" + mode
-                    + "&avoid=toll"
-                    + "&locale=fr"
-                    + "&instructions=true"
-                    + "&calc_points=true"
-                    + "&key=" + graphhopperApiKey;
+                    + "&profile=" + mode;
             String responseNoToll = restTemplate.getForObject(urlNoToll, String.class);
             dto.setNoToll(responseNoToll);
 
-            String urlEconomical = "https://graphhopper.com/api/1/route?"
+            String urlEconomical = graphhopperBaseUrl + "/route?"
                     + "point=" + originCoordinates
                     + "&point=" + destinationCoordinates
-                    + "&vehicle=" + mode
-                    + "&weighting=shortest"
-                    + "&locale=fr"
-                    + "&instructions=true"
-                    + "&calc_points=true"
-                    + "&key=" + graphhopperApiKey;
+                    + "&profile=" + mode;
             String responseEconomical = restTemplate.getForObject(urlEconomical, String.class);
             dto.setEconomical(responseEconomical);
 
