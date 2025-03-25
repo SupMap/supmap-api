@@ -2,7 +2,6 @@ package fr.supmap.supmapapi.controller.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import fr.supmap.supmapapi.controller.DirectionController;
 import fr.supmap.supmapapi.model.dto.DirectionsDto;
 import fr.supmap.supmapapi.model.entity.table.Route;
@@ -44,7 +43,7 @@ public class DirectionControllerImpl implements DirectionController {
      * @param origin      Peut être au format "lat,lon" ou une adresse (ex: "Paris")
      * @param mode        "car", "bike", "foot", etc.
      * @param destination Identique à origin (coordonnées ou texte)
-     * @return            La réponse JSON brute de l'API GraphHopper
+     * @return La réponse JSON brute de l'API GraphHopper
      */
     @Override
     public String getDirection(String origin, String mode, String destination) {
@@ -106,7 +105,7 @@ public class DirectionControllerImpl implements DirectionController {
      * @param origin      Peut être au format "lat,lon" ou une adresse (ex: "Paris")
      * @param mode        "car", "bike", "foot", etc.
      * @param destination Identique à origin (coordonnées ou texte)
-     * @return            Les 3 itinéraires alternatifs (le plus rapide, le plus économique, sans péage)
+     * @return Les 3 itinéraires alternatifs (le plus rapide, le plus économique, sans péage)
      */
     @Override
     public DirectionsDto getDirections(String origin, String mode, String destination) {
@@ -160,8 +159,15 @@ public class DirectionControllerImpl implements DirectionController {
     }
 
     private String getCoordinates(String location) {
-        if (location.contains(",")) {
-            return location;
+        String[] parts = location.split(",");
+        if (parts.length >= 2) {
+            try {
+                Double.parseDouble(parts[0].trim());
+                Double.parseDouble(parts[1].trim());
+                return location;
+            } catch (NumberFormatException e) {
+                // Ce n'est pas déjà des coordonnées numériques.
+            }
         }
         try {
             String encodedLocation = UriUtils.encode(location, StandardCharsets.UTF_8);

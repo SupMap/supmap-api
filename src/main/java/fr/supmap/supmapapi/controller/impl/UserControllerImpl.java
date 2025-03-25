@@ -6,7 +6,6 @@ import fr.supmap.supmapapi.model.dto.userDtos.UserMinimalInfoDto;
 import fr.supmap.supmapapi.model.dto.userDtos.UserUpdateDto;
 import fr.supmap.supmapapi.model.entity.table.User;
 import fr.supmap.supmapapi.repository.UserRepository;
-import fr.supmap.supmapapi.services.TokenManager;
 import fr.supmap.supmapapi.services.exceptions.NotAuthorizeException;
 import fr.supmap.supmapapi.services.exceptions.NotFoundException;
 import io.swagger.v3.oas.annotations.Operation;

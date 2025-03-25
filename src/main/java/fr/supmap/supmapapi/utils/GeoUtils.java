@@ -17,7 +17,6 @@ public class GeoUtils {
         String[] parts = coordinates.split(",");
         double lat = Double.parseDouble(parts[0].trim());
         double lon = Double.parseDouble(parts[1].trim());
-        // JTS attend (x, y) = (lon, lat)
         return geometryFactory.createPoint(new Coordinate(lon, lat));
     }
 
@@ -29,5 +28,9 @@ public class GeoUtils {
     private static List<Coordinate> decodePolyline(String encoded) {
         // Implémentez le décodage de polyline selon l'algorithme de Google ou utilisez une librairie existante.
         return new ArrayList<>();
+    }
+
+    public static Point createPoint(Double latitude, Double longitude) {
+        return geometryFactory.createPoint(new Coordinate(longitude, latitude));
     }
 }
