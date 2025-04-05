@@ -14,7 +14,10 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,6 +27,8 @@ import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -117,33 +122,72 @@ public class DirectionControllerImpl implements DirectionController {
         DirectionsDto dto = new DirectionsDto();
 
         try {
-            String urlFastest = graphhopperBaseUrl + "/route?"
-                    + "point=" + originCoordinates
-                    + "&point=" + destinationCoordinates
-                    + "&profile=" + mode;
-            String responseFastest = restTemplate.getForObject(urlFastest, String.class);
+            ObjectMapper mapper = new ObjectMapper();
+
+            // POINTS
+            List<List<Double>> points = List.of(
+                    List.of(Double.parseDouble(originCoordinates.split(",")[1]), Double.parseDouble(originCoordinates.split(",")[0])),
+                    List.of(Double.parseDouble(destinationCoordinates.split(",")[1]), Double.parseDouble(destinationCoordinates.split(",")[0]))
+            );
+
+            // HEADERS
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            // Requête 1 : normal + alternatif
+            Map<String, Object> bodyFastest = new java.util.HashMap<>();
+            bodyFastest.put("points", points);
+            bodyFastest.put("profile", mode);
+            bodyFastest.put("elevation", true);
+            bodyFastest.put("instructions", true);
+            bodyFastest.put("locale", "fr_FR");
+            bodyFastest.put("points_encoded", true);
+            bodyFastest.put("points_encoded_multiplier", 100_000);
+            bodyFastest.put("details", List.of("road_class", "road_environment", "max_speed", "average_speed"));
+            bodyFastest.put("snap_preventions", List.of("ferry"));
+            bodyFastest.put("ch.disable", true);
+
+            HttpEntity<String> requestFastest = new HttpEntity<>(mapper.writeValueAsString(bodyFastest), headers);
+            String responseFastest = restTemplate.postForObject(graphhopperBaseUrl + "/route?key=", requestFastest, String.class);
             dto.setFastest(responseFastest);
 
-            String urlNoToll = graphhopperBaseUrl + "/route?"
-                    + "point=" + originCoordinates
-                    + "&point=" + destinationCoordinates
-                    + "&profile=" + mode;
-            String responseNoToll = restTemplate.getForObject(urlNoToll, String.class);
-            dto.setNoToll(responseNoToll);
+            // Requête 2 : sans autoroute
+            Map<String, Object> priorityRule = new java.util.HashMap<>();
+            priorityRule.put("if", "road_class == MOTORWAY");
+            priorityRule.put("multiply_by", 0.0);
 
-            String urlEconomical = graphhopperBaseUrl + "/route?"
-                    + "point=" + originCoordinates
-                    + "&point=" + destinationCoordinates
-                    + "&profile=" + mode;
-            String responseEconomical = restTemplate.getForObject(urlEconomical, String.class);
-            dto.setEconomical(responseEconomical);
+            Map<String, Object> customModel = new java.util.HashMap<>();
+            customModel.put("priority", List.of(priorityRule));
+
+// Maintenant ajoute-le dans le bodyNoHighway
+            Map<String, Object> bodyNoHighway = new java.util.HashMap<>();
+            bodyNoHighway.put("points", points);
+            bodyNoHighway.put("profile", mode);
+            bodyNoHighway.put("elevation", true);
+            bodyNoHighway.put("instructions", true);
+            bodyNoHighway.put("locale", "fr_FR");
+            bodyNoHighway.put("points_encoded", true);
+            bodyNoHighway.put("points_encoded_multiplier", 100_000);
+            bodyNoHighway.put("details", List.of("road_class", "road_environment", "max_speed", "average_speed"));
+            bodyNoHighway.put("snap_preventions", List.of("ferry"));
+            bodyNoHighway.put("custom_model", customModel);
+            bodyNoHighway.put("ch.disable", true);
+
+            HttpEntity<String> requestNoHighway = new HttpEntity<>(mapper.writeValueAsString(bodyNoHighway), headers);
+            String responseNoHighway = restTemplate.postForObject(graphhopperBaseUrl + "/route?key=", requestNoHighway, String.class);
+            dto.setNoToll(responseNoHighway);
+
+            // Requête 3 : économique (on peut l’améliorer plus tard, ici même que no highway)
+            dto.setEconomical(responseNoHighway);
 
             return dto;
+
         } catch (Exception e) {
             log.error("Erreur lors du calcul des itinéraires alternatifs", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erreur lors du calcul des itinéraires alternatifs", e);
         }
     }
+
 
     private String getCoordinates(String location) {
         String[] parts = location.split(",");
