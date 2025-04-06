@@ -2,6 +2,7 @@ package fr.supmap.supmapapi.controller.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import fr.supmap.supmapapi.controller.DirectionController;
 import fr.supmap.supmapapi.model.dto.DirectionsDto;
 import fr.supmap.supmapapi.model.entity.table.Route;
@@ -14,19 +15,22 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -117,77 +121,108 @@ public class DirectionControllerImpl implements DirectionController {
     public DirectionsDto getDirections(String origin, String mode, String destination) {
         String originCoordinates = getCoordinates(origin);
         String destinationCoordinates = getCoordinates(destination);
-
-        RestTemplate restTemplate = new RestTemplate();
         DirectionsDto dto = new DirectionsDto();
 
         try {
             ObjectMapper mapper = new ObjectMapper();
 
-            // POINTS
+            // Construction de la liste des points au format [longitude, latitude]
             List<List<Double>> points = List.of(
-                    List.of(Double.parseDouble(originCoordinates.split(",")[1]), Double.parseDouble(originCoordinates.split(",")[0])),
-                    List.of(Double.parseDouble(destinationCoordinates.split(",")[1]), Double.parseDouble(destinationCoordinates.split(",")[0]))
+                    List.of(
+                            Double.parseDouble(originCoordinates.split(",")[1].trim()),
+                            Double.parseDouble(originCoordinates.split(",")[0].trim())
+                    ),
+                    List.of(
+                            Double.parseDouble(destinationCoordinates.split(",")[1].trim()),
+                            Double.parseDouble(destinationCoordinates.split(",")[0].trim())
+                    )
             );
 
-            // HEADERS
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            // Requête 1 : normal + alternatif
-            Map<String, Object> bodyFastest = new java.util.HashMap<>();
-            bodyFastest.put("points", points);
-            bodyFastest.put("profile", mode);
-            bodyFastest.put("elevation", true);
-            bodyFastest.put("instructions", true);
-            bodyFastest.put("locale", "fr_FR");
-            bodyFastest.put("points_encoded", true);
-            bodyFastest.put("points_encoded_multiplier", 100_000);
-            bodyFastest.put("details", List.of("road_class", "road_environment", "max_speed", "average_speed"));
-            bodyFastest.put("snap_preventions", List.of("ferry"));
-            bodyFastest.put("ch.disable", true);
-
-            HttpEntity<String> requestFastest = new HttpEntity<>(mapper.writeValueAsString(bodyFastest), headers);
-            String responseFastest = restTemplate.postForObject(graphhopperBaseUrl + "/route?key=", requestFastest, String.class);
-            dto.setFastest(responseFastest);
-
-            // Requête 2 : sans autoroute
-            Map<String, Object> priorityRule = new java.util.HashMap<>();
+            // Préparation des corps de requêtes pour POST
+            // Corps identique pour "sans autoroute" et "économique", à l'exception du paramètre alternative pour le dernier.
+            Map<String, Object> priorityRule = new HashMap<>();
             priorityRule.put("if", "road_class == MOTORWAY");
             priorityRule.put("multiply_by", 0.0);
 
-            Map<String, Object> customModel = new java.util.HashMap<>();
+            Map<String, Object> customModel = new HashMap<>();
             customModel.put("priority", List.of(priorityRule));
 
-// Maintenant ajoute-le dans le bodyNoHighway
-            Map<String, Object> bodyNoHighway = new java.util.HashMap<>();
+            // Corps pour itinéraire sans autoroute
+            Map<String, Object> bodyNoHighway = new HashMap<>();
             bodyNoHighway.put("points", points);
             bodyNoHighway.put("profile", mode);
             bodyNoHighway.put("elevation", true);
             bodyNoHighway.put("instructions", true);
             bodyNoHighway.put("locale", "fr_FR");
             bodyNoHighway.put("points_encoded", true);
-            bodyNoHighway.put("points_encoded_multiplier", 100_000);
+            bodyNoHighway.put("points_encoded_multiplier", 100000);
             bodyNoHighway.put("details", List.of("road_class", "road_environment", "max_speed", "average_speed"));
             bodyNoHighway.put("snap_preventions", List.of("ferry"));
             bodyNoHighway.put("custom_model", customModel);
             bodyNoHighway.put("ch.disable", true);
 
-            HttpEntity<String> requestNoHighway = new HttpEntity<>(mapper.writeValueAsString(bodyNoHighway), headers);
-            String responseNoHighway = restTemplate.postForObject(graphhopperBaseUrl + "/route?key=", requestNoHighway, String.class);
-            dto.setNoToll(responseNoHighway);
+            // Corps pour itinéraire économique avec alternatives (2 alternatives demandées)
+            Map<String, Object> bodyEconomical = new HashMap<>(bodyNoHighway);
+            bodyEconomical.put("algorithm", "alternative_route");
+            bodyEconomical.put("alternative_route.max_paths", 2);
+            bodyEconomical.remove("custom_model");
 
-            // Requête 3 : économique (on peut l’améliorer plus tard, ici même que no highway)
-            dto.setEconomical(responseNoHighway);
+            WebClient webClient = WebClient.builder()
+                    .baseUrl(graphhopperBaseUrl)
+                    .defaultHeader("Content-Type", "application/json; charset=UTF-8")
+                    .defaultHeader("Accept", "application/json")
+                    .build();
+
+            String classicUrl = graphhopperBaseUrl + "/route?" +
+                    "point=" + originCoordinates +
+                    "&point=" + destinationCoordinates +
+                    "&profile=" + mode +
+                    "&key=" + graphhopperApiKey;
+            String classicResponse = webClient.get()
+                    .uri(classicUrl)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+            dto.setFastest(classicResponse);
+
+            // --- Itinéraire sans autoroute (POST) ---
+            String noHighwayResponse = webClient.post()
+                    .uri(uriBuilder -> uriBuilder.path("/route")
+                            .queryParam("key", graphhopperApiKey)
+                            .build())
+                    .body(BodyInserters.fromValue(bodyNoHighway))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+            dto.setNoToll(noHighwayResponse);
+
+            // --- Itinéraire économique (POST) avec alternatives ---
+            String economicalResponseFull = webClient.post()
+                    .uri(uriBuilder -> uriBuilder.path("/route")
+                            .queryParam("key", graphhopperApiKey)
+                            .build())
+                    .body(BodyInserters.fromValue(bodyEconomical))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            // On parse la réponse et on sélectionne la deuxième alternative, le but après est juste de regrouper le plus rapide et l'économique ensemble.
+            JsonNode economicalJson = mapper.readTree(economicalResponseFull);
+            JsonNode paths = economicalJson.path("paths");
+            if (paths.isArray() && paths.size() > 1) {
+                JsonNode secondPath = paths.get(1);
+                ((ObjectNode) economicalJson).set("paths", mapper.createArrayNode());
+                ((ObjectNode) economicalJson).withArray("paths").add(secondPath);
+                dto.setEconomical(economicalJson.toString());
+            }
 
             return dto;
-
         } catch (Exception e) {
             log.error("Erreur lors du calcul des itinéraires alternatifs", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erreur lors du calcul des itinéraires alternatifs", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Erreur lors du calcul des itinéraires alternatifs", e);
         }
     }
-
 
     private String getCoordinates(String location) {
         String[] parts = location.split(",");
