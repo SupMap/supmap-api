@@ -50,4 +50,5 @@ public class User {
 
     @Column(name = "oauth2_id")
     private Integer oauth2Id;
+
 }

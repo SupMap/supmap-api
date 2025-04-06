@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 
 @Getter
 @Setter
@@ -26,5 +27,10 @@ public class IncidentType {
     @NotNull
     @Column(name = "name", nullable = false, length = 50)
     private String name;
+
+    @NotNull
+    @ColumnDefault("1.0")
+    @Column(name = "weight", nullable = false)
+    private Double weight;
 
 }

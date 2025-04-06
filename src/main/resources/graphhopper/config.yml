@@ -1,0 +1,67 @@
+graphhopper:
+  datareader.file: /data/france-latest.osm.pbf
+  graph.location: graph-cache
+  custom_models.directory: /data/custom_models
+
+  #### Profils de routage ####
+  profiles:
+    - name: car
+      custom_model_files: [car.json]
+    - name: bike
+      custom_model_files: [bike.json, bike_elevation.json]
+    - name: foot
+      custom_model_files: [foot.json, foot_elevation.json]
+
+  profiles_ch:
+    - profile: car
+    - profile: bike
+    - profile: foot
+
+  profiles_lm: []
+
+  #### Encodage des valeurs ####
+  graph.encoded_values: car_access, car_average_speed, road_access, bike_priority, bike_road_access, foot_road_access, mtb_rating, hike_rating, country, road_class, bike_access, roundabout, bike_average_speed, average_slope, foot_access, foot_priority, foot_average_speed
+
+  #### Import OSM ####
+  # On ignore ici seulement les types non pertinents
+  import.osm.ignored_highways: construction, pedestrian, steps
+
+  #### Préparation du graphe ####
+  prepare.min_network_size: 200
+
+  #### Routage ####
+  routing.snap_preventions_default: tunnel, bridge, ferry
+  routing.non_ch.max_waypoint_distance: 1000000
+
+server:
+  application_connectors:
+    - type: http
+      port: 8989
+      bind_host: 0.0.0.0
+  admin_connectors:
+    - type: http
+      port: 8990
+      bind_host: 0.0.0.0
+
+logging:
+  appenders:
+    - type: file
+      time_zone: UTC
+      current_log_filename: logs/graphhopper.log
+      log_format: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+      archive: true
+      archived_log_filename_pattern: "./logs/graphhopper-%d.log.gz"
+      archived_file_count: 30
+      never_block: true
+    - type: console
+      time_zone: UTC
+      log_format: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  loggers:
+    "com.graphhopper.osm_warnings":
+      level: DEBUG
+      additive: false
+      appenders:
+        - type: file
+          currentLogFilename: logs/osm_warnings.log
+          archive: false
+          logFormat: "[%level] %msg%n"
