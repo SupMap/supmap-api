@@ -126,7 +126,6 @@ public class DirectionControllerImpl implements DirectionController {
         try {
             ObjectMapper mapper = new ObjectMapper();
 
-            // Construction de la liste des points au format [longitude, latitude]
             List<List<Double>> points = List.of(
                     List.of(
                             Double.parseDouble(originCoordinates.split(",")[1].trim()),
@@ -138,91 +137,93 @@ public class DirectionControllerImpl implements DirectionController {
                     )
             );
 
-            // Préparation des corps de requêtes pour POST
-            // Corps identique pour "sans autoroute" et "économique", à l'exception du paramètre alternative pour le dernier.
-            Map<String, Object> priorityRule = new HashMap<>();
-            priorityRule.put("if", "road_class == MOTORWAY");
-            priorityRule.put("multiply_by", 0.0);
+            // ---- Requête pour fastest & economical (alternative_route) ----
+            Map<String, Object> bodyAlternative = new HashMap<>();
+            bodyAlternative.put("points", points);
+            bodyAlternative.put("profile", mode);
+            bodyAlternative.put("elevation", false);
+            bodyAlternative.put("instructions", true);
+            bodyAlternative.put("locale", "fr_FR");
+            bodyAlternative.put("points_encoded", true);
+            bodyAlternative.put("details", List.of("road_class", "average_speed"));
+            bodyAlternative.put("algorithm", "alternative_route");
+            bodyAlternative.put("alternative_route.max_paths", 2);
 
-            Map<String, Object> customModel = new HashMap<>();
-            customModel.put("priority", List.of(priorityRule));
+            // ---- Requête pour noToll (custom_model interdit les autoroutes) ----
+            Map<String, Object> priorityRule = Map.of(
+                    "if", "road_class == MOTORWAY",
+                    "multiply_by", 0.0
+            );
+            Map<String, Object> customModel = Map.of(
+                    "priority", List.of(priorityRule)
+            );
 
-            // Corps pour itinéraire sans autoroute
-            Map<String, Object> bodyNoHighway = new HashMap<>();
-            bodyNoHighway.put("points", points);
-            bodyNoHighway.put("profile", mode);
-            bodyNoHighway.put("elevation", true);
-            bodyNoHighway.put("instructions", true);
-            bodyNoHighway.put("locale", "fr_FR");
-            bodyNoHighway.put("points_encoded", true);
-            bodyNoHighway.put("points_encoded_multiplier", 100000);
-            bodyNoHighway.put("details", List.of("road_class", "road_environment", "max_speed", "average_speed"));
-            bodyNoHighway.put("snap_preventions", List.of("ferry"));
-            bodyNoHighway.put("custom_model", customModel);
-            bodyNoHighway.put("ch.disable", true);
-
-            // Corps pour itinéraire économique avec alternatives (2 alternatives demandées)
-            Map<String, Object> bodyEconomical = new HashMap<>(bodyNoHighway);
-            bodyEconomical.put("algorithm", "alternative_route");
-            bodyEconomical.put("alternative_route.max_paths", 2);
-            bodyEconomical.remove("custom_model");
+            Map<String, Object> bodyNoToll = new HashMap<>();
+            bodyNoToll.put("points", points);
+            bodyNoToll.put("profile", mode);
+            bodyNoToll.put("elevation", false);
+            bodyNoToll.put("instructions", true);
+            bodyNoToll.put("locale", "fr_FR");
+            bodyNoToll.put("points_encoded", true);
+            bodyNoToll.put("details", List.of("road_class", "average_speed"));
+            bodyNoToll.put("ch.disable", true);
+            bodyNoToll.put("custom_model", customModel);
 
             WebClient webClient = WebClient.builder()
                     .baseUrl(graphhopperBaseUrl)
-                    .defaultHeader("Content-Type", "application/json; charset=UTF-8")
+                    .defaultHeader("Content-Type", "application/json")
                     .defaultHeader("Accept", "application/json")
                     .build();
 
-            String classicUrl = graphhopperBaseUrl + "/route?" +
-                    "point=" + originCoordinates +
-                    "&point=" + destinationCoordinates +
-                    "&profile=" + mode +
-                    "&key=" + graphhopperApiKey;
-            String classicResponse = webClient.get()
-                    .uri(classicUrl)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-            dto.setFastest(classicResponse);
-
-            // --- Itinéraire sans autoroute (POST) ---
-            String noHighwayResponse = webClient.post()
+            // --- POST fastest + economical ---
+            String responseAlt = webClient.post()
                     .uri(uriBuilder -> uriBuilder.path("/route")
                             .queryParam("key", graphhopperApiKey)
                             .build())
-                    .body(BodyInserters.fromValue(bodyNoHighway))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-            dto.setNoToll(noHighwayResponse);
-
-            // --- Itinéraire économique (POST) avec alternatives ---
-            String economicalResponseFull = webClient.post()
-                    .uri(uriBuilder -> uriBuilder.path("/route")
-                            .queryParam("key", graphhopperApiKey)
-                            .build())
-                    .body(BodyInserters.fromValue(bodyEconomical))
+                    .body(BodyInserters.fromValue(bodyAlternative))
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
 
-            // On parse la réponse et on sélectionne la deuxième alternative, le but après est juste de regrouper le plus rapide et l'économique ensemble.
-            JsonNode economicalJson = mapper.readTree(economicalResponseFull);
-            JsonNode paths = economicalJson.path("paths");
-            if (paths.isArray() && paths.size() > 1) {
-                JsonNode secondPath = paths.get(1);
-                ((ObjectNode) economicalJson).set("paths", mapper.createArrayNode());
-                ((ObjectNode) economicalJson).withArray("paths").add(secondPath);
-                dto.setEconomical(economicalJson.toString());
+            JsonNode altJson = mapper.readTree(responseAlt);
+            JsonNode paths = altJson.path("paths");
+
+            if (paths.isArray() && paths.size() >= 2) {
+                // fastest
+                ObjectNode fastestNode = altJson.deepCopy();
+                fastestNode.set("paths", mapper.createArrayNode().add(paths.get(0)));
+                dto.setFastest(mapper.writeValueAsString(fastestNode));
+
+                // economical
+                ObjectNode economicalNode = altJson.deepCopy();
+                economicalNode.set("paths", mapper.createArrayNode().add(paths.get(1)));
+                dto.setEconomical(mapper.writeValueAsString(economicalNode));
+            } else {
+                dto.setFastest(responseAlt);
+                dto.setEconomical(responseAlt);
             }
 
+            // --- POST noToll ---
+            String responseNoToll = webClient.post()
+                    .uri(uriBuilder -> uriBuilder.path("/route")
+                            .queryParam("key", graphhopperApiKey)
+                            .build())
+                    .body(BodyInserters.fromValue(bodyNoToll))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+            dto.setNoToll(responseNoToll);
+
             return dto;
+
         } catch (Exception e) {
-            log.error("Erreur lors du calcul des itinéraires alternatifs", e);
+            log.error("Erreur lors du calcul des itinéraires", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Erreur lors du calcul des itinéraires alternatifs", e);
+                    "Erreur lors du calcul des itinéraires", e);
         }
     }
+
+
 
     private String getCoordinates(String location) {
         String[] parts = location.split(",");
