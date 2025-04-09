@@ -11,7 +11,6 @@ import fr.supmap.supmapapi.repository.UserRepository;
 import fr.supmap.supmapapi.utils.GeoUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,15 +25,24 @@ public class IncidentControllerImpl implements IncidentController {
 
     private final Logger log = LoggerFactory.getLogger(IncidentControllerImpl.class);
     private final IncidentTypeRepository incidentTypeRepository;
+    private final UserRepository userRepository;
+    private final IncidentRepository incidentRepository;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private IncidentRepository incidentRepository;
-
-    public IncidentControllerImpl(IncidentTypeRepository incidentTypeRepository) {
+    public IncidentControllerImpl(IncidentTypeRepository incidentTypeRepository, UserRepository userRepository, IncidentRepository incidentRepository) {
         this.incidentTypeRepository = incidentTypeRepository;
+        this.userRepository = userRepository;
+        this.incidentRepository = incidentRepository;
+    }
+
+    private User GetUserAuthenticated() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || "anonymousUser".equals(authentication.getName())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur non authentifié");
+        }
+        long userId = Long.parseLong(authentication.getName());
+
+        return userRepository.findById(Math.toIntExact(userId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur non trouvé"));
     }
 
     @Override
@@ -49,14 +57,7 @@ public class IncidentControllerImpl implements IncidentController {
         newIncident.setLocation(GeoUtils.createPoint(incidentDto.getLatitude(), incidentDto.getLongitude()));
         newIncident.setCreatedAt(Instant.now());
 
-        // Récupérer l'utilisateur authentifié
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || "anonymousUser".equals(authentication.getName())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur non authentifié");
-        }
-        long userId = Long.parseLong(authentication.getName());
-        User user = userRepository.findById(Math.toIntExact(userId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur non trouvé"));
+        User user = GetUserAuthenticated();
         newIncident.setConfirmedByUser(user);
 
         try {
@@ -75,8 +76,27 @@ public class IncidentControllerImpl implements IncidentController {
         for (Incident incident : incidents) {
             IncidentDto dto = IncidentDto.builder()
                     .typeId(incident.getType().getId())
-                    .latitude(incident.getLocation().getY()) // Y = latitude
-                    .longitude(incident.getLocation().getX()) // X = longitude
+                    .typeName(incident.getType().getName())
+                    .latitude(incident.getLocation().getY())
+                    .longitude(incident.getLocation().getX())
+                    .build();
+            incidentDtoList.add(dto);
+        }
+        return incidentDtoList;
+    }
+
+    @Override
+    public List<IncidentDto> getUserIncidents() {
+        User user = GetUserAuthenticated();
+        log.info("GET /user/incidents for user: {}", user.getUsername());
+        List<Incident> incidents = incidentRepository.findByConfirmedByUserId(user.getId());
+        List<IncidentDto> incidentDtoList = new ArrayList<>();
+        for (Incident incident : incidents) {
+            IncidentDto dto = IncidentDto.builder()
+                    .typeId(incident.getType().getId())
+                    .typeName(incident.getType().getName())
+                    .latitude(incident.getLocation().getY())
+                    .longitude(incident.getLocation().getX())
                     .build();
             incidentDtoList.add(dto);
         }

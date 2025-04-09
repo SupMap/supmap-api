@@ -15,4 +15,7 @@ public interface IncidentController {
 
     @GetMapping("/incidents")
     List<IncidentDto> getAllIncidents();
+
+    @GetMapping("/user/incidents")
+    List<IncidentDto> getUserIncidents();
 }
