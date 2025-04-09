@@ -55,7 +55,7 @@ public class UserControllerImpl implements UserController {
     }
 
     @Override
-    @Operation(description = "Permet de récupérer les informations d'un utilisateur spécifique", summary = "Get User")
+    @Operation(description = "Permet de récupérer les informations d'un utilisateur spécifique (il faut etre admin)", summary = "Get User")
     public UserMinimalInfoDto getUser(Integer userId) {
         log.info("GET /users/{}", userId);
 

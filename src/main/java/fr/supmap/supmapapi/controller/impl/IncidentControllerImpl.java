@@ -9,6 +9,8 @@ import fr.supmap.supmapapi.repository.IncidentRepository;
 import fr.supmap.supmapapi.repository.IncidentTypeRepository;
 import fr.supmap.supmapapi.repository.UserRepository;
 import fr.supmap.supmapapi.utils.GeoUtils;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -21,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RestController
+@Tag(name = "Incidents")
 public class IncidentControllerImpl implements IncidentController {
 
     private final Logger log = LoggerFactory.getLogger(IncidentControllerImpl.class);
@@ -46,6 +49,7 @@ public class IncidentControllerImpl implements IncidentController {
     }
 
     @Override
+    @Operation(description = "Permet de créer un incident", summary = "Create Incident")
     public Incident createIncident(IncidentDto incidentDto) {
         log.info("POST /incidents incidentDto: {}", incidentDto);
 
@@ -69,6 +73,7 @@ public class IncidentControllerImpl implements IncidentController {
     }
 
     @Override
+    @Operation(description = "Permet de lister tous les incidents", summary = "Get All Incidents")
     public List<IncidentDto> getAllIncidents() {
         log.info("GET /incidents");
         List<Incident> incidents = incidentRepository.findAll();
@@ -86,6 +91,7 @@ public class IncidentControllerImpl implements IncidentController {
     }
 
     @Override
+    @Operation(description = "Permet de lister les incidents de l'utilisateur connecté", summary = "Get User Incidents")
     public List<IncidentDto> getUserIncidents() {
         User user = GetUserAuthenticated();
         log.info("GET /user/incidents for user: {}", user.getUsername());

@@ -9,6 +9,8 @@ import fr.supmap.supmapapi.model.entity.table.User;
 import fr.supmap.supmapapi.repository.UserRepository;
 import fr.supmap.supmapapi.services.PasswordManager;
 import fr.supmap.supmapapi.services.TokenManager;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -20,6 +22,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 @RestController
+@Tag(name = "Gestion de l'authentification")
 public class AuthControllerImpl implements AuthController {
 
     private final UserRepository userRepository;
@@ -42,6 +45,7 @@ public class AuthControllerImpl implements AuthController {
     }
 
     @Override
+    @Operation(description = "Permet de se connecter avec un nom d'utilisateur ou un email et un mot de passe", summary = "Login")
     public TokenResponseDto loginUser(LoginDto user) {
         Optional<User> foundUser = userRepository.findByUsernameOrEmail(user.getLoginUser(), user.getLoginUser());
 
@@ -59,6 +63,7 @@ public class AuthControllerImpl implements AuthController {
     }
 
     @Override
+    @Operation(description = "Permet de d'enregistrer un utilisateur", summary = "Register")
     public CompletableFuture<TokenResponseDto> registerUser(RegisterDto user) {
         return CompletableFuture.supplyAsync(() -> {
             this.log.info("POST /api/auth/register");

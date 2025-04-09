@@ -10,18 +10,21 @@ import fr.supmap.supmapapi.model.entity.table.User;
 import fr.supmap.supmapapi.repository.RouteRepository;
 import fr.supmap.supmapapi.repository.UserRepository;
 import fr.supmap.supmapapi.utils.GeoUtils;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriUtils;
 
@@ -33,6 +36,7 @@ import java.util.Map;
 
 @Slf4j
 @RestController
+@Tag(name = "Gestion des itinéraires")
 public class DirectionControllerImpl implements DirectionController {
 
     @Value("${graphhopper.api-key}")
@@ -55,6 +59,7 @@ public class DirectionControllerImpl implements DirectionController {
      * @return La réponse JSON brute de l'API GraphHopper
      */
     @Override
+    @Operation(description = "Permet de récupérer un itinéraire entre deux points", summary = "Get Route")
     public String getDirection(String origin, String mode, String destination) {
         String originCoordinates = getCoordinates(origin);
         String destinationCoordinates = getCoordinates(destination);
@@ -115,6 +120,7 @@ public class DirectionControllerImpl implements DirectionController {
      * @return Les 3 itinéraires alternatifs (le plus rapide, le plus économique, sans péage)
      */
     @Override
+    @Operation(description = "Permet de récupérer 3 itinéraires alternatifs entre deux points", summary = "Get Alternative Routes")
     public DirectionsDto getDirections(String origin, String mode, String destination) {
         String originCoordinates = getCoordinates(origin);
         String destinationCoordinates = getCoordinates(destination);
@@ -124,17 +130,13 @@ public class DirectionControllerImpl implements DirectionController {
             ObjectMapper mapper = new ObjectMapper();
 
             List<List<Double>> points = List.of(
-                    List.of(
-                            Double.parseDouble(originCoordinates.split(",")[1].trim()),
-                            Double.parseDouble(originCoordinates.split(",")[0].trim())
-                    ),
-                    List.of(
-                            Double.parseDouble(destinationCoordinates.split(",")[1].trim()),
-                            Double.parseDouble(destinationCoordinates.split(",")[0].trim())
-                    )
+                    List.of(Double.parseDouble(originCoordinates.split(",")[1].trim()),
+                            Double.parseDouble(originCoordinates.split(",")[0].trim())),
+                    List.of(Double.parseDouble(destinationCoordinates.split(",")[1].trim()),
+                            Double.parseDouble(destinationCoordinates.split(",")[0].trim()))
             );
 
-            // ---- Requête pour fastest & economical (alternative_route) ----
+            // ---- Requête pour fastest & economical ----
             Map<String, Object> bodyAlternative = new HashMap<>();
             bodyAlternative.put("points", points);
             bodyAlternative.put("profile", mode);
@@ -146,14 +148,12 @@ public class DirectionControllerImpl implements DirectionController {
             bodyAlternative.put("algorithm", "alternative_route");
             bodyAlternative.put("alternative_route.max_paths", 2);
 
-            // ---- Requête pour noToll (custom_model interdit les autoroutes) ----
+            // ---- Requête pour noToll ----
             Map<String, Object> priorityRule = Map.of(
                     "if", "road_class == MOTORWAY",
                     "multiply_by", 0.0
             );
-            Map<String, Object> customModel = Map.of(
-                    "priority", List.of(priorityRule)
-            );
+            Map<String, Object> customModel = Map.of("priority", List.of(priorityRule));
 
             Map<String, Object> bodyNoToll = new HashMap<>();
             bodyNoToll.put("points", points);
@@ -166,32 +166,29 @@ public class DirectionControllerImpl implements DirectionController {
             bodyNoToll.put("ch.disable", true);
             bodyNoToll.put("custom_model", customModel);
 
-            WebClient webClient = WebClient.builder()
-                    .baseUrl(graphhopperBaseUrl)
-                    .defaultHeader("Content-Type", "application/json")
-                    .defaultHeader("Accept", "application/json")
-                    .build();
+            // --- Utilisation de RestTemplate ---
+            RestTemplate restTemplate = new RestTemplate();
 
-            // --- POST fastest + economical ---
-            String responseAlt = webClient.post()
-                    .uri(uriBuilder -> uriBuilder.path("/route")
-                            .queryParam("key", graphhopperApiKey)
-                            .build())
-                    .body(BodyInserters.fromValue(bodyAlternative))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+
+            // POST fastest + economical
+            HttpEntity<Map<String, Object>> requestAlt = new HttpEntity<>(bodyAlternative, headers);
+            String responseAlt = restTemplate.postForObject(
+                    graphhopperBaseUrl + "/route?key=" + graphhopperApiKey,
+                    requestAlt,
+                    String.class
+            );
 
             JsonNode altJson = mapper.readTree(responseAlt);
             JsonNode paths = altJson.path("paths");
 
             if (paths.isArray() && paths.size() >= 2) {
-                // fastest
                 ObjectNode fastestNode = altJson.deepCopy();
                 fastestNode.set("paths", mapper.createArrayNode().add(paths.get(0)));
                 dto.setFastest(mapper.writeValueAsString(fastestNode));
 
-                // economical
                 ObjectNode economicalNode = altJson.deepCopy();
                 economicalNode.set("paths", mapper.createArrayNode().add(paths.get(1)));
                 dto.setEconomical(mapper.writeValueAsString(economicalNode));
@@ -200,15 +197,13 @@ public class DirectionControllerImpl implements DirectionController {
                 dto.setEconomical(responseAlt);
             }
 
-            // --- POST noToll ---
-            String responseNoToll = webClient.post()
-                    .uri(uriBuilder -> uriBuilder.path("/route")
-                            .queryParam("key", graphhopperApiKey)
-                            .build())
-                    .body(BodyInserters.fromValue(bodyNoToll))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            // POST noToll
+            HttpEntity<Map<String, Object>> requestNoToll = new HttpEntity<>(bodyNoToll, headers);
+            String responseNoToll = restTemplate.postForObject(
+                    graphhopperBaseUrl + "/route?key=" + graphhopperApiKey,
+                    requestNoToll,
+                    String.class
+            );
             dto.setNoToll(responseNoToll);
 
             return dto;
@@ -219,7 +214,6 @@ public class DirectionControllerImpl implements DirectionController {
                     "Erreur lors du calcul des itinéraires", e);
         }
     }
-
 
 
     private String getCoordinates(String location) {
