@@ -30,6 +30,11 @@ public class Incident {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @NotNull
+    @ColumnDefault("(CURRENT_TIMESTAMP + '01:00:00')")
+    @Column(name = "expiration_date", nullable = false)
+    private Instant expirationDate;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "confirmed_by_user_id")
     private fr.supmap.supmapapi.model.entity.table.User confirmedByUser;

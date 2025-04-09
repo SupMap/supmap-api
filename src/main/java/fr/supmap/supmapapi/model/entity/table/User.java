@@ -51,4 +51,15 @@ public class User {
     @Column(name = "oauth2_id")
     private Integer oauth2Id;
 
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ColumnDefault("1")
+    @JoinColumn(name = "role", nullable = false)
+    private Role role;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "contribution", nullable = false)
+    private Integer contribution;
+
 }

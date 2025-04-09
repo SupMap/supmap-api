@@ -2,6 +2,7 @@ package fr.supmap.supmapapi.model.entity.table;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
@@ -27,9 +28,6 @@ public class Route {
     @JoinColumn(name = "user_id")
     private fr.supmap.supmapapi.model.entity.table.User user;
 
-    @Column(name = "total_distance")
-    private Double totalDistance;
-
     @Column(name = "total_duration")
     private Double totalDuration;
 
@@ -37,6 +35,13 @@ public class Route {
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "calculated_at", nullable = false)
     private Instant calculatedAt;
+
+    @Column(name = "total_distance")
+    private Double totalDistance;
+
+    @Size(max = 50)
+    @Column(name = "custom_model", length = 50)
+    private String customModel;
 
     @Column(name = "start_location", columnDefinition = "geography(Point,4326) not null")
     private Point startLocation;

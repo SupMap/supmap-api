@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 public interface RouteController {
 
-    @PostMapping("/routes")
+    @PostMapping("/route")
     Route createRoute(@RequestBody Route route);
 
     @GetMapping("/routes/{id}")
