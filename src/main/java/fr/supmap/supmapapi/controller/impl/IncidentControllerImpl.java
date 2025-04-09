@@ -39,7 +39,7 @@ public class IncidentControllerImpl implements IncidentController {
         if (authentication == null || "anonymousUser".equals(authentication.getName())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur non authentifié");
         }
-        long userId = Long.parseLong(authentication.getName());
+        int userId = Integer.parseInt(authentication.getName());
 
         return userRepository.findById(Math.toIntExact(userId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur non trouvé"));

@@ -16,10 +16,11 @@ import java.io.Serializable;
 @AllArgsConstructor
 public class UserMinimalInfoDto implements Serializable {
 
-    private Integer id;
     private String username;
     private String name;
     private String secondName;
     private String email;
+    private String role;
+    private Integer contributionNumber;
 
 }
