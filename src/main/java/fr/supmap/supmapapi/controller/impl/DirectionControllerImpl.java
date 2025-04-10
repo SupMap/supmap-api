@@ -2,34 +2,23 @@ package fr.supmap.supmapapi.controller.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import fr.supmap.supmapapi.controller.DirectionController;
 import fr.supmap.supmapapi.model.dto.DirectionsDto;
-import fr.supmap.supmapapi.model.entity.table.Route;
-import fr.supmap.supmapapi.model.entity.table.User;
-import fr.supmap.supmapapi.repository.RouteRepository;
-import fr.supmap.supmapapi.repository.UserRepository;
-import fr.supmap.supmapapi.utils.GeoUtils;
+import fr.supmap.supmapapi.model.entity.table.Incident;
+import fr.supmap.supmapapi.repository.IncidentRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
-import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.geom.Point;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,13 +34,12 @@ public class DirectionControllerImpl implements DirectionController {
     @Value("${graphhopper.base-url}")
     private String graphhopperBaseUrl;
 
+    private final IncidentRepository incidentRepository;
 
-    /**
-     * @param origin      Peut être au format "lat,lon" ou une adresse (ex: "Paris")
-     * @param mode        "car", "bike", "foot", etc.
-     * @param destination Identique à origin (coordonnées ou texte)
-     * @return La réponse JSON brute de l'API GraphHopper
-     */
+    public DirectionControllerImpl(IncidentRepository incidentRepository) {
+        this.incidentRepository = incidentRepository;
+    }
+
     @Override
     @Operation(description = "Permet de récupérer un itinéraire entre deux points", summary = "Get Route")
     public String getDirection(String origin, String mode, String destination, String customModel) {
@@ -70,28 +58,22 @@ public class DirectionControllerImpl implements DirectionController {
                                 Double.parseDouble(destinationCoordinates.split(",")[0].trim()))
                 );
 
-                Map<String, Object> priorityRule = Map.of(
-                        "if", "road_class == MOTORWAY",
-                        "multiply_by", 0.0
-                );
-                Map<String, Object> customModelMap = Map.of("priority", List.of(priorityRule));
-
-                Map<String, Object> bodyNoToll = new HashMap<>();
-                bodyNoToll.put("points", points);
-                bodyNoToll.put("profile", mode);
-                bodyNoToll.put("elevation", false);
-                bodyNoToll.put("instructions", true);
-                bodyNoToll.put("locale", "fr_FR");
-                bodyNoToll.put("points_encoded", true);
-                bodyNoToll.put("details", List.of("road_class", "average_speed"));
-                bodyNoToll.put("ch.disable", true);
-                bodyNoToll.put("custom_model", customModelMap);
+                Map<String, Object> body = new HashMap<>();
+                body.put("points", points);
+                body.put("profile", mode);
+                body.put("elevation", false);
+                body.put("instructions", true);
+                body.put("locale", "fr_FR");
+                body.put("points_encoded", true);
+                body.put("details", List.of("road_class", "average_speed"));
+                body.put("ch.disable", true);
+                body.put("custom_model", generateCustomModelFromIncidents(true));
 
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.APPLICATION_JSON);
                 headers.setAccept(List.of(MediaType.APPLICATION_JSON));
 
-                HttpEntity<Map<String, Object>> request = new HttpEntity<>(bodyNoToll, headers);
+                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
                 return restTemplate.postForObject(
                         graphhopperBaseUrl + "/route?key=" + graphhopperApiKey,
                         request,
@@ -119,13 +101,6 @@ public class DirectionControllerImpl implements DirectionController {
         }
     }
 
-
-    /**
-     * @param origin      Peut être au format "lat,lon" ou une adresse (ex: "Paris")
-     * @param mode        "car", "bike", "foot", etc.
-     * @param destination Identique à origin (coordonnées ou texte)
-     * @return Les 3 itinéraires alternatifs (le plus rapide, le plus économique, sans péage)
-     */
     @Override
     @Operation(description = "Permet de récupérer 3 itinéraires alternatifs entre deux points", summary = "Get Alternative Routes")
     public DirectionsDto getDirections(String origin, String mode, String destination) {
@@ -153,12 +128,8 @@ public class DirectionControllerImpl implements DirectionController {
             bodyAlternative.put("details", List.of("road_class", "average_speed"));
             bodyAlternative.put("algorithm", "alternative_route");
             bodyAlternative.put("alternative_route.max_paths", 2);
-
-            Map<String, Object> priorityRule = Map.of(
-                    "if", "road_class == MOTORWAY",
-                    "multiply_by", 0.0
-            );
-            Map<String, Object> customModel = Map.of("priority", List.of(priorityRule));
+            bodyAlternative.put("ch.disable", true);
+            bodyAlternative.put("custom_model", generateCustomModelFromIncidents(false));
 
             Map<String, Object> bodyNoToll = new HashMap<>();
             bodyNoToll.put("points", points);
@@ -169,10 +140,9 @@ public class DirectionControllerImpl implements DirectionController {
             bodyNoToll.put("points_encoded", true);
             bodyNoToll.put("details", List.of("road_class", "average_speed"));
             bodyNoToll.put("ch.disable", true);
-            bodyNoToll.put("custom_model", customModel);
+            bodyNoToll.put("custom_model", generateCustomModelFromIncidents(true));
 
             RestTemplate restTemplate = new RestTemplate();
-
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setAccept(List.of(MediaType.APPLICATION_JSON));
@@ -201,14 +171,14 @@ public class DirectionControllerImpl implements DirectionController {
             }
 
             HttpEntity<Map<String, Object>> requestNoToll = new HttpEntity<>(bodyNoToll, headers);
-            try{
+            try {
                 String responseNoToll = restTemplate.postForObject(
                         graphhopperBaseUrl + "/route?key=" + graphhopperApiKey,
                         requestNoToll,
                         String.class
                 );
                 dto.setNoToll(responseNoToll);
-            }catch (Exception e){
+            } catch (Exception e) {
                 dto.setNoToll(responseAlt);
             }
 
@@ -220,7 +190,6 @@ public class DirectionControllerImpl implements DirectionController {
                     "Erreur lors du calcul des itinéraires", e);
         }
     }
-
 
     private String getCoordinates(String location) {
         String[] parts = location.split(",");
@@ -256,4 +225,142 @@ public class DirectionControllerImpl implements DirectionController {
             throw new RuntimeException("Erreur lors du géocodage pour : " + location, e);
         }
     }
+
+    private Map<String, Object> generateCustomModelFromIncidents(Boolean noToll) {
+        try {
+            List<Incident> incidents = incidentRepository.findAll();
+
+            ObjectMapper mapper = new ObjectMapper();
+            ArrayNode allFeatures = mapper.createArrayNode();
+            ArrayNode speedRules = mapper.createArrayNode();
+            ArrayNode priorityRules = mapper.createArrayNode();
+
+            int areaIndex = 0;
+
+            for (Incident incident : incidents) {
+                String areaId = "custom" + areaIndex;
+
+                double lon = incident.getLocation().getX();
+                double lat = incident.getLocation().getY();
+
+                double delta = 0.00005;
+
+                ArrayNode polygonCoordinates = mapper.createArrayNode();
+                polygonCoordinates.add(array(mapper, lon - delta, lat - delta));
+                polygonCoordinates.add(array(mapper, lon + delta, lat - delta));
+                polygonCoordinates.add(array(mapper, lon + delta, lat + delta));
+                polygonCoordinates.add(array(mapper, lon - delta, lat + delta));
+                polygonCoordinates.add(array(mapper, lon - delta, lat - delta)); // ferme le polygone
+
+                ArrayNode polygon = mapper.createArrayNode();
+                polygon.add(polygonCoordinates);
+
+                ObjectNode geometry = mapper.createObjectNode();
+                geometry.put("type", "Polygon");
+                geometry.set("coordinates", polygon);
+
+                ObjectNode feature = mapper.createObjectNode();
+                feature.put("type", "Feature");
+                feature.put("id", areaId);
+                feature.set("geometry", geometry);
+                allFeatures.add(feature);
+
+                double multiplier = incident.getType().getWeight();
+
+                // Règle sur la vitesse
+                ObjectNode speedRule = mapper.createObjectNode();
+                speedRule.put("if", "in_" + areaId);
+                speedRule.put("multiply_by", multiplier);
+                speedRules.add(speedRule);
+
+                // Règle sur la priorité
+                ObjectNode priorityRule = mapper.createObjectNode();
+                priorityRule.put("if", "in_" + areaId);
+                priorityRule.put("multiply_by", multiplier);
+                priorityRules.add(priorityRule);
+
+                areaIndex++;
+            }
+
+            // Construction du FeatureCollection global pour les areas
+            ObjectNode areasNode = mapper.createObjectNode();
+            areasNode.put("type", "FeatureCollection");
+            areasNode.set("features", allFeatures);
+
+            // Custom model final
+            ObjectNode customModel = mapper.createObjectNode();
+            customModel.set("areas", areasNode);
+            customModel.set("speed", speedRules);
+            customModel.set("priority", priorityRules);
+
+            // Ajout règle noToll si demandé
+            if (noToll) {
+                ObjectNode motorwayRule = mapper.createObjectNode();
+                motorwayRule.put("if", "road_class == MOTORWAY");
+                motorwayRule.put("multiply_by", 0.0);
+                priorityRules.add(motorwayRule);
+
+                // Met à jour la priority avec les 2 types de règles
+                customModel.set("priority", priorityRules);
+            }
+
+            return mapper.convertValue(customModel, Map.class);
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la génération du custom model incidents + autoroutes", e);
+            return null;
+        }
+    }
+
+    // Utilitaire : tableau [lon, lat]
+    private ArrayNode array(ObjectMapper mapper, double lon, double lat) {
+        ArrayNode coord = mapper.createArrayNode();
+        coord.add(lon);
+        coord.add(lat);
+        return coord;
+    }
+
+
+
 }
+
+
+
+
+//{
+//        "points": [
+//        [
+//        0.699346, 47.420072
+//        ],
+//        [
+//        0.702779, 47.405116
+//        ]
+//        ],
+//        "snap_preventions": [
+//        "motorway",
+//        "ferry",
+//        "tunnel"
+//        ],
+//        "details": [
+//        "road_class",
+//        "surface"
+//        ],
+//        "custom_model": {
+//        "priority": [
+//        {
+//        "if": "road_access == PRIVATE",
+//        "multiply_by": "0"
+//        },
+//        {
+//        "if": "road_class == MOTORWAY",
+//        "multiply_by": "0"
+//        }
+//        ]
+//        },
+//        "ch.disable": true,
+//        "profile": "car",
+//        "locale": "en",
+//        "instructions": true,
+//        "calc_points": true,
+//        "points_encoded": false
+//        }
