@@ -1,29 +1,85 @@
 package fr.supmap.supmapapi.controller.impl;
 
+import fr.supmap.supmapapi.controller.DirectionController;
 import fr.supmap.supmapapi.controller.RouteController;
+import fr.supmap.supmapapi.model.dto.RouteDto;
 import fr.supmap.supmapapi.model.entity.table.Route;
+import fr.supmap.supmapapi.model.entity.table.User;
 import fr.supmap.supmapapi.repository.RouteRepository;
+import fr.supmap.supmapapi.repository.UserRepository;
+import fr.supmap.supmapapi.utils.GeoUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.Instant;
+
 
 @RestController
 @Tag(name = "Gestion des routes")
 public class RouteControllerImpl implements RouteController {
 
-    @Autowired
-    private RouteRepository routeRepository;
+    private final RouteRepository routeRepository;
+    private final UserRepository userRepository;
+    private final DirectionController directionController;
+
+    public RouteControllerImpl(RouteRepository routeRepository, UserRepository userRepository, DirectionController directionController) {
+        this.routeRepository = routeRepository;
+        this.userRepository = userRepository;
+        this.directionController = directionController;
+    }
+
+    private User GetUserAuthenticated() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || "anonymousUser".equals(authentication.getName())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur non authentifié");
+        }
+        int userId = Integer.parseInt(authentication.getName());
+
+        return userRepository.findById(Math.toIntExact(userId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur non trouvé"));
+    }
 
     @Override
     @Operation(description = "Permet de créer une route", summary = "Create Route")
-    public Route createRoute(Route route) {
-        return routeRepository.save(route);
+    public void createRoute(RouteDto routeDto) {
+        User user = GetUserAuthenticated();
+
+        Route route = new Route();
+        route.setUser(user);
+        route.setTotalDuration(routeDto.getTotalDuration());
+        route.setTotalDistance(routeDto.getTotalDistance());
+        route.setCustomModel(routeDto.getCustomModel());
+        route.setMode(routeDto.getMode());
+        route.setStartLocation(GeoUtils.parsePoint(routeDto.getStartLocation()));
+        route.setEndLocation(GeoUtils.parsePoint(routeDto.getEndLocation()));
+        route.setRouteGeometry(GeoUtils.decodePolylineToLineString(routeDto.getRoute()));
+        route.setCalculatedAt(Instant.now());
+
+        routeRepository.save(route);
     }
+
 
     @Override
     @Operation(description = "Permet de récuperer une route", summary = "Get Routes (Not yet implemented)")
-    public Route getRoute(Integer id) {
-        return routeRepository.findById(id).orElse(null);
+    public String getUserRoute(String origin) {
+        User user = GetUserAuthenticated();
+        Route route = routeRepository.findByUserId(user.getId());
+        if (route == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Aucune route trouvée pour cet utilisateur");
+        }
+
+        String destination = route.getEndLocation().getY() + "," + route.getEndLocation().getX();
+
+        return directionController.getDirection(origin,
+                                                route.getMode(),
+                                                destination,
+                                                route.getCustomModel());
     }
+
+
 }

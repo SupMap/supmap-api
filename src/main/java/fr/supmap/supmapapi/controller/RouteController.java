@@ -1,16 +1,14 @@
 package fr.supmap.supmapapi.controller;
 
+import fr.supmap.supmapapi.model.dto.RouteDto;
 import fr.supmap.supmapapi.model.entity.table.Route;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
 
 public interface RouteController {
 
     @PostMapping("/route")
-    Route createRoute(@RequestBody Route route);
+    void createRoute(@RequestBody RouteDto route);
 
-    @GetMapping("/routes/{id}")
-    Route getRoute(@PathVariable("id") Integer id);
+    @GetMapping("/user/route")
+    String getUserRoute(@RequestParam("origin") String origin);
 }

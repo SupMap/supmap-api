@@ -8,11 +8,12 @@ public interface DirectionController {
 
     @GetMapping("/direction")
     String getDirection(@RequestParam(value="origin") String origin,
-                         @RequestParam(value="mode", defaultValue="car") String mode,
-                         @RequestParam(value="destination") String destination);
+                        @RequestParam(value="mode", defaultValue="car") String mode,
+                        @RequestParam(value="destination") String destination,
+                        @RequestParam(value="custom-model", required = false) String customModel);
 
     @GetMapping("/directions")
-    DirectionsDto getDirections(@RequestParam("origin") String origin,
-                                @RequestParam("mode") String mode,
-                                @RequestParam("destination") String destination);
+    DirectionsDto getDirections(@RequestParam(value="origin") String origin,
+                                @RequestParam(value="mode", defaultValue="car") String mode,
+                                @RequestParam(value="destination") String destination);
 }

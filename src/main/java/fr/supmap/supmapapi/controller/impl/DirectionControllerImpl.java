@@ -45,12 +45,6 @@ public class DirectionControllerImpl implements DirectionController {
     @Value("${graphhopper.base-url}")
     private String graphhopperBaseUrl;
 
-    @Autowired
-    private RouteRepository routeRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
 
     /**
      * @param origin      Peut être au format "lat,lon" ou une adresse (ex: "Paris")
@@ -60,58 +54,71 @@ public class DirectionControllerImpl implements DirectionController {
      */
     @Override
     @Operation(description = "Permet de récupérer un itinéraire entre deux points", summary = "Get Route")
-    public String getDirection(String origin, String mode, String destination) {
+    public String getDirection(String origin, String mode, String destination, String customModel) {
         String originCoordinates = getCoordinates(origin);
         String destinationCoordinates = getCoordinates(destination);
 
-        String url = graphhopperBaseUrl + "/route?"
-                + "point=" + originCoordinates
-                + "&point=" + destinationCoordinates
-                + "&profile=" + mode;
-
-        log.info(url);
-
-        RestTemplate restTemplate = new RestTemplate();
-        log.info("GET " + url);
-        String ghResponse = restTemplate.getForObject(url, String.class);
-
         try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            Integer userId = Integer.parseInt(authentication.getName());
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur non trouvé"));
-
+            RestTemplate restTemplate = new RestTemplate();
             ObjectMapper mapper = new ObjectMapper();
-            JsonNode root = mapper.readTree(ghResponse);
-            JsonNode pathsNode = root.path("paths");
-            if (pathsNode.isArray() && pathsNode.size() > 0) {
-                JsonNode firstPath = pathsNode.get(0);
-                double distance = firstPath.path("distance").asDouble();
-                double timeMs = firstPath.path("time").asDouble();
-                String encodedPolyline = firstPath.path("points").asText();
 
-                Point startPoint = GeoUtils.parsePoint(originCoordinates);
-                Point endPoint = GeoUtils.parsePoint(destinationCoordinates);
-                LineString routeGeometry = GeoUtils.decodePolylineToLineString(encodedPolyline);
+            if ("noToll".equalsIgnoreCase(customModel)) {
+                List<List<Double>> points = List.of(
+                        List.of(Double.parseDouble(originCoordinates.split(",")[1].trim()),
+                                Double.parseDouble(originCoordinates.split(",")[0].trim())),
+                        List.of(Double.parseDouble(destinationCoordinates.split(",")[1].trim()),
+                                Double.parseDouble(destinationCoordinates.split(",")[0].trim()))
+                );
 
-                Route route = new Route();
-                route.setUser(user);
-                route.setTotalDistance(distance);
-                route.setTotalDuration(timeMs / 1000.0);
-                route.setStartLocation(startPoint);
-                route.setEndLocation(endPoint);
-                route.setRouteGeometry(routeGeometry);
-                route.setCalculatedAt(Instant.now());
+                Map<String, Object> priorityRule = Map.of(
+                        "if", "road_class == MOTORWAY",
+                        "multiply_by", 0.0
+                );
+                Map<String, Object> customModelMap = Map.of("priority", List.of(priorityRule));
 
-                routeRepository.save(route);
-                log.info("Route sauvegardée pour l'utilisateur " + user.getUsername());
+                Map<String, Object> bodyNoToll = new HashMap<>();
+                bodyNoToll.put("points", points);
+                bodyNoToll.put("profile", mode);
+                bodyNoToll.put("elevation", false);
+                bodyNoToll.put("instructions", true);
+                bodyNoToll.put("locale", "fr_FR");
+                bodyNoToll.put("points_encoded", true);
+                bodyNoToll.put("details", List.of("road_class", "average_speed"));
+                bodyNoToll.put("ch.disable", true);
+                bodyNoToll.put("custom_model", customModelMap);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+
+                HttpEntity<Map<String, Object>> request = new HttpEntity<>(bodyNoToll, headers);
+                return restTemplate.postForObject(
+                        graphhopperBaseUrl + "/route?key=" + graphhopperApiKey,
+                        request,
+                        String.class
+                );
+            } else {
+                String url = graphhopperBaseUrl + "/route?"
+                        + "point=" + originCoordinates
+                        + "&point=" + destinationCoordinates
+                        + "&profile=" + mode
+                        + "&locale=fr_FR"
+                        + "&points_encoded=true"
+                        + "&instructions=true"
+                        + "&details=road_class&details=average_speed"
+                        + "&key=" + graphhopperApiKey;
+
+                log.info("GET {}", url);
+                return restTemplate.getForObject(url, String.class);
             }
-        } catch (Exception e) {
-            log.error("Erreur lors de la sauvegarde de la route", e);
-        }
 
-        return ghResponse;
+        } catch (Exception e) {
+            log.error("Erreur dans getDirection", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Erreur lors de la récupération de l'itinéraire", e);
+        }
     }
+
 
     /**
      * @param origin      Peut être au format "lat,lon" ou une adresse (ex: "Paris")
@@ -136,7 +143,6 @@ public class DirectionControllerImpl implements DirectionController {
                             Double.parseDouble(destinationCoordinates.split(",")[0].trim()))
             );
 
-            // ---- Requête pour fastest & economical ----
             Map<String, Object> bodyAlternative = new HashMap<>();
             bodyAlternative.put("points", points);
             bodyAlternative.put("profile", mode);
@@ -148,7 +154,6 @@ public class DirectionControllerImpl implements DirectionController {
             bodyAlternative.put("algorithm", "alternative_route");
             bodyAlternative.put("alternative_route.max_paths", 2);
 
-            // ---- Requête pour noToll ----
             Map<String, Object> priorityRule = Map.of(
                     "if", "road_class == MOTORWAY",
                     "multiply_by", 0.0
@@ -166,14 +171,12 @@ public class DirectionControllerImpl implements DirectionController {
             bodyNoToll.put("ch.disable", true);
             bodyNoToll.put("custom_model", customModel);
 
-            // --- Utilisation de RestTemplate ---
             RestTemplate restTemplate = new RestTemplate();
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setAccept(List.of(MediaType.APPLICATION_JSON));
 
-            // POST fastest + economical
             HttpEntity<Map<String, Object>> requestAlt = new HttpEntity<>(bodyAlternative, headers);
             String responseAlt = restTemplate.postForObject(
                     graphhopperBaseUrl + "/route?key=" + graphhopperApiKey,
@@ -197,14 +200,17 @@ public class DirectionControllerImpl implements DirectionController {
                 dto.setEconomical(responseAlt);
             }
 
-            // POST noToll
             HttpEntity<Map<String, Object>> requestNoToll = new HttpEntity<>(bodyNoToll, headers);
-            String responseNoToll = restTemplate.postForObject(
-                    graphhopperBaseUrl + "/route?key=" + graphhopperApiKey,
-                    requestNoToll,
-                    String.class
-            );
-            dto.setNoToll(responseNoToll);
+            try{
+                String responseNoToll = restTemplate.postForObject(
+                        graphhopperBaseUrl + "/route?key=" + graphhopperApiKey,
+                        requestNoToll,
+                        String.class
+                );
+                dto.setNoToll(responseNoToll);
+            }catch (Exception e){
+                dto.setNoToll(responseAlt);
+            }
 
             return dto;
 
@@ -224,7 +230,7 @@ public class DirectionControllerImpl implements DirectionController {
                 Double.parseDouble(parts[1].trim());
                 return location;
             } catch (NumberFormatException e) {
-                // Ce n'est pas déjà des coordonnées numériques.
+                // Si la conversion échoue, on suppose que c'est une adresse
             }
         }
         try {

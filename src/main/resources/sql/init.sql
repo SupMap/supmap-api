@@ -74,5 +74,6 @@ CREATE TABLE routes
     total_distance DOUBLE PRECISION,
     total_duration DOUBLE PRECISION,
     calculated_at  TIMESTAMP                   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    custom_model   VARCHAR(50)
+    custom_model   VARCHAR(50),
+    mode           VARCHAR(15)                 NOT NULL DEFAULT 'car'
 );

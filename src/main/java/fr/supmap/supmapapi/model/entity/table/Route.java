@@ -43,6 +43,11 @@ public class Route {
     @Column(name = "custom_model", length = 50)
     private String customModel;
 
+    @Size(max = 15)
+    @Column(name = "mode", length = 50)
+    private String mode;
+
+
     @Column(name = "start_location", columnDefinition = "geography(Point,4326) not null")
     private Point startLocation;
 
