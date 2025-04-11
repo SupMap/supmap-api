@@ -19,6 +19,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Instant;
 
 
+/**
+ * The type Route controller.
+ */
 @RestController
 @Tag(name = "Gestion des routes")
 public class RouteControllerImpl implements RouteController {
@@ -27,6 +30,13 @@ public class RouteControllerImpl implements RouteController {
     private final UserRepository userRepository;
     private final DirectionController directionController;
 
+    /**
+     * Instantiates a new Route controller.
+     *
+     * @param routeRepository     the route repository
+     * @param userRepository      the user repository
+     * @param directionController the direction controller
+     */
     public RouteControllerImpl(RouteRepository routeRepository, UserRepository userRepository, DirectionController directionController) {
         this.routeRepository = routeRepository;
         this.userRepository = userRepository;
@@ -49,6 +59,8 @@ public class RouteControllerImpl implements RouteController {
     public void createRoute(RouteDto routeDto) {
         User user = GetUserAuthenticated();
 
+        this.deleteRoute(user);
+
         Route route = new Route();
         route.setUser(user);
         route.setTotalDuration(routeDto.getTotalDuration());
@@ -61,6 +73,14 @@ public class RouteControllerImpl implements RouteController {
         route.setCalculatedAt(Instant.now());
 
         routeRepository.save(route);
+    }
+
+    private void deleteRoute(User user) {
+        Route route = routeRepository.findByUserId(user.getId());
+        if (route == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Aucune route trouvée pour cet utilisateur");
+        }
+        routeRepository.delete(route);
     }
 
 
