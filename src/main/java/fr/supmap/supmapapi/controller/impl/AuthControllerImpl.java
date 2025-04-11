@@ -5,7 +5,9 @@ import fr.supmap.supmapapi.controller.AuthController;
 import fr.supmap.supmapapi.model.dto.userDtos.LoginDto;
 import fr.supmap.supmapapi.model.dto.userDtos.RegisterDto;
 import fr.supmap.supmapapi.model.dto.userDtos.TokenResponseDto;
+import fr.supmap.supmapapi.model.entity.table.Role;
 import fr.supmap.supmapapi.model.entity.table.User;
+import fr.supmap.supmapapi.repository.RoleRepository;
 import fr.supmap.supmapapi.repository.UserRepository;
 import fr.supmap.supmapapi.services.PasswordManager;
 import fr.supmap.supmapapi.services.TokenManager;
@@ -26,11 +28,13 @@ import java.util.concurrent.CompletableFuture;
 public class AuthControllerImpl implements AuthController {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final TokenManager tokenManager;
     private final Logger log = LoggerFactory.getLogger(AuthControllerImpl.class);
 
-    public AuthControllerImpl(UserRepository userRepository, TokenManager tokenManager) {
+    public AuthControllerImpl(UserRepository userRepository, RoleRepository roleRepository, TokenManager tokenManager) {
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.tokenManager = tokenManager;
     }
 
@@ -78,6 +82,8 @@ public class AuthControllerImpl implements AuthController {
             newUser.setEmail(user.getEmail());
             newUser.setPasswordHash(PasswordManager.hashPassword(user.getPassword()));
             newUser.setCreationDate(new Date().toInstant());
+            newUser.setRole(roleRepository.findByName("Utilisateur"));
+            newUser.setContribution(0);
 
             userRepository.save(newUser);
             String token = tokenManager.createToken(newUser.getId());
