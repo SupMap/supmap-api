@@ -50,7 +50,7 @@ public class IncidentControllerImpl implements IncidentController {
 
     @Override
     @Operation(description = "Permet de créer un incident", summary = "Create Incident")
-    public Incident createIncident(IncidentDto incidentDto) {
+    public String createIncident(IncidentDto incidentDto) {
         log.info("POST /incidents incidentDto: {}", incidentDto);
 
         IncidentType incidentType = this.incidentTypeRepository.findById(incidentDto.getTypeId())
@@ -60,12 +60,16 @@ public class IncidentControllerImpl implements IncidentController {
         newIncident.setType(incidentType);
         newIncident.setLocation(GeoUtils.createPoint(incidentDto.getLatitude(), incidentDto.getLongitude()));
         newIncident.setCreatedAt(Instant.now());
+        newIncident.setExpirationDate(Instant.now().plusSeconds(3600));
 
         User user = GetUserAuthenticated();
         newIncident.setConfirmedByUser(user);
 
         try {
-            return incidentRepository.save(newIncident);
+            incidentRepository.save(newIncident);
+            log.info("Incident créé avec succès : {}", newIncident);
+            return "Incident créé avec succès";
+
         } catch (Exception e) {
             log.error("Erreur lors de la création de l'incident : {}", e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erreur lors de la création de l'incident", e);
@@ -79,13 +83,15 @@ public class IncidentControllerImpl implements IncidentController {
         List<Incident> incidents = incidentRepository.findAll();
         List<IncidentDto> incidentDtoList = new ArrayList<>();
         for (Incident incident : incidents) {
-            IncidentDto dto = IncidentDto.builder()
-                    .typeId(incident.getType().getId())
-                    .typeName(incident.getType().getName())
-                    .latitude(incident.getLocation().getY())
-                    .longitude(incident.getLocation().getX())
-                    .build();
-            incidentDtoList.add(dto);
+
+            if(incident.getExpirationDate() != null && !incident.getExpirationDate().isBefore(Instant.now())) {
+                IncidentDto dto = IncidentDto.builder()
+                        .typeId(incident.getType().getId())
+                        .latitude(incident.getLocation().getY())
+                        .longitude(incident.getLocation().getX())
+                        .build();
+                incidentDtoList.add(dto);
+            }
         }
         return incidentDtoList;
     }
@@ -100,7 +106,6 @@ public class IncidentControllerImpl implements IncidentController {
         for (Incident incident : incidents) {
             IncidentDto dto = IncidentDto.builder()
                     .typeId(incident.getType().getId())
-                    .typeName(incident.getType().getName())
                     .latitude(incident.getLocation().getY())
                     .longitude(incident.getLocation().getX())
                     .build();

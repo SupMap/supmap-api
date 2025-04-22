@@ -11,7 +11,7 @@ import java.util.List;
 public interface IncidentController {
 
     @PostMapping("/incidents")
-    Incident createIncident(@RequestBody IncidentDto incident);
+    String createIncident(@RequestBody IncidentDto incident);
 
     @GetMapping("/incidents")
     List<IncidentDto> getAllIncidents();

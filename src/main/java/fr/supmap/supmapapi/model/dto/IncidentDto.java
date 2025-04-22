@@ -11,7 +11,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class IncidentDto {
     private Integer typeId;
-    private String typeName;
     private Double latitude;
     private Double longitude;
 }
