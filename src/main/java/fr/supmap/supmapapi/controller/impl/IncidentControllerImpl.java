@@ -114,4 +114,20 @@ public class IncidentControllerImpl implements IncidentController {
         }
         return incidentDtoList;
     }
+
+    @Override
+    @Operation(description = "Permet de noter un incident", summary = "Rate Incident")
+    public String rateIncident(Integer id, boolean positive) {
+        log.info("POST /incident/{}/rate?positive={}", id, positive);
+        Incident incident = incidentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Incident non trouvé"));
+        if (positive) {
+            incident.setExpirationDate(Instant.now().plusSeconds(3600));
+        } else {
+            Instant expirationDate = incident.getExpirationDate();
+            incident.setExpirationDate(expirationDate.minusSeconds(600));
+        }
+        incidentRepository.save(incident);
+        return "Vote enregistré";
+    }
 }
