@@ -1,4 +1,4 @@
-package fr.supmap.supmapapi.model.dto;
+package fr.supmap.supmapapi.model.dto.incident;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -1,7 +1,8 @@
 package fr.supmap.supmapapi.controller.impl;
 
 import fr.supmap.supmapapi.controller.IncidentController;
-import fr.supmap.supmapapi.model.dto.IncidentDto;
+import fr.supmap.supmapapi.model.dto.incident.IncidentDto;
+import fr.supmap.supmapapi.model.dto.incident.IncidentResponseDto;
 import fr.supmap.supmapapi.model.entity.table.Incident;
 import fr.supmap.supmapapi.model.entity.table.IncidentType;
 import fr.supmap.supmapapi.model.entity.table.User;
@@ -78,14 +79,14 @@ public class IncidentControllerImpl implements IncidentController {
 
     @Override
     @Operation(description = "Permet de lister tous les incidents", summary = "Get All Incidents")
-    public List<IncidentDto> getAllIncidents() {
+    public List<IncidentResponseDto> getAllIncidents() {
         log.info("GET /incidents");
         List<Incident> incidents = incidentRepository.findAll();
-        List<IncidentDto> incidentDtoList = new ArrayList<>();
+        List<IncidentResponseDto> incidentDtoList = new ArrayList<>();
         for (Incident incident : incidents) {
-
             if(incident.getExpirationDate() != null && !incident.getExpirationDate().isBefore(Instant.now())) {
-                IncidentDto dto = IncidentDto.builder()
+                IncidentResponseDto dto = IncidentResponseDto.builder()
+                        .id(incident.getId())
                         .typeId(incident.getType().getId())
                         .latitude(incident.getLocation().getY())
                         .longitude(incident.getLocation().getX())

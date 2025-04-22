@@ -1,7 +1,7 @@
 package fr.supmap.supmapapi.controller;
 
-import fr.supmap.supmapapi.model.dto.IncidentDto;
-import fr.supmap.supmapapi.model.entity.table.Incident;
+import fr.supmap.supmapapi.model.dto.incident.IncidentDto;
+import fr.supmap.supmapapi.model.dto.incident.IncidentResponseDto;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -14,7 +14,7 @@ public interface IncidentController {
     String createIncident(@RequestBody IncidentDto incident);
 
     @GetMapping("/incidents")
-    List<IncidentDto> getAllIncidents();
+    List<IncidentResponseDto> getAllIncidents();
 
     @GetMapping("/user/incidents")
     List<IncidentDto> getUserIncidents();
