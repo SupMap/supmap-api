@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
@@ -51,7 +52,7 @@ public class IncidentControllerImpl implements IncidentController {
 
     @Override
     @Operation(description = "Permet de créer un incident", summary = "Create Incident")
-    public String createIncident(IncidentDto incidentDto) {
+    public ResponseEntity<String> createIncident(IncidentDto incidentDto) {
         log.info("POST /incidents incidentDto: {}", incidentDto);
 
         IncidentType incidentType = this.incidentTypeRepository.findById(incidentDto.getTypeId())
@@ -69,7 +70,7 @@ public class IncidentControllerImpl implements IncidentController {
         try {
             incidentRepository.save(newIncident);
             log.info("Incident créé avec succès : {}", newIncident);
-            return "Incident créé avec succès";
+            return ResponseEntity.status(HttpStatus.CREATED).body("Incident créé avec succès");
 
         } catch (Exception e) {
             log.error("Erreur lors de la création de l'incident : {}", e.getMessage());
@@ -117,7 +118,7 @@ public class IncidentControllerImpl implements IncidentController {
 
     @Override
     @Operation(description = "Permet de noter un incident", summary = "Rate Incident")
-    public String rateIncident(Integer id, boolean positive) {
+    public  ResponseEntity<String> rateIncident(Integer id, boolean positive) {
         log.info("POST /incident/{}/rate?positive={}", id, positive);
         Incident incident = incidentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Incident non trouvé"));
@@ -128,6 +129,6 @@ public class IncidentControllerImpl implements IncidentController {
             incident.setExpirationDate(expirationDate.minusSeconds(600));
         }
         incidentRepository.save(incident);
-        return "Vote enregistré";
+        return ResponseEntity.ok("Incident noté avec succès");
     }
 }
