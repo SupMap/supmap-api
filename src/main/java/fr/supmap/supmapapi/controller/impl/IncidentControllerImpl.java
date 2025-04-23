@@ -8,6 +8,7 @@ import fr.supmap.supmapapi.model.entity.table.IncidentType;
 import fr.supmap.supmapapi.model.entity.table.User;
 import fr.supmap.supmapapi.repository.IncidentRepository;
 import fr.supmap.supmapapi.repository.IncidentTypeRepository;
+import fr.supmap.supmapapi.repository.RoleRepository;
 import fr.supmap.supmapapi.repository.UserRepository;
 import fr.supmap.supmapapi.utils.GeoUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,11 +33,13 @@ public class IncidentControllerImpl implements IncidentController {
     private final IncidentTypeRepository incidentTypeRepository;
     private final UserRepository userRepository;
     private final IncidentRepository incidentRepository;
+    private final RoleRepository roleRepository;
 
-    public IncidentControllerImpl(IncidentTypeRepository incidentTypeRepository, UserRepository userRepository, IncidentRepository incidentRepository) {
+    public IncidentControllerImpl(IncidentTypeRepository incidentTypeRepository, UserRepository userRepository, IncidentRepository incidentRepository, RoleRepository roleRepository) {
         this.incidentTypeRepository = incidentTypeRepository;
         this.userRepository = userRepository;
         this.incidentRepository = incidentRepository;
+        this.roleRepository = roleRepository;
     }
 
     private User GetUserAuthenticated() {
@@ -65,10 +68,15 @@ public class IncidentControllerImpl implements IncidentController {
         newIncident.setExpirationDate(Instant.now().plusSeconds(3600));
 
         User user = GetUserAuthenticated();
+        if(user.getRole().getName().equals("Administrateur") && (user.getContribution() == null || user.getContribution() == 0)) {
+            user.setRole(roleRepository.findByName("Contributeur"));
+        }
+        user.setContribution(user.getContribution() + 1);
         newIncident.setConfirmedByUser(user);
 
         try {
             incidentRepository.save(newIncident);
+            userRepository.save(user);
             log.info("Incident créé avec succès : {}", newIncident);
             return ResponseEntity.status(HttpStatus.CREATED).body("Incident créé avec succès");
 

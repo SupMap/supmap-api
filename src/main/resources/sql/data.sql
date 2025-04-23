@@ -6,6 +6,7 @@
 INSERT INTO roles (name) VALUES ('Utilisateur');
 INSERT INTO roles (name) VALUES ('Modérateur');
 INSERT INTO roles (name) VALUES ('Administrateur');
+INSERT INTO roles (name) VALUES ('Contributeur');
 
 -- Insertion des catégories d'incidents
 INSERT INTO incident_categories (name) VALUES ('Accident');
@@ -45,12 +46,3 @@ VALUES
     ((SELECT category_id FROM incident_categories WHERE name = 'Obstacle sur la route'), 'Débris sur la route', 0.95),
     ((SELECT category_id FROM incident_categories WHERE name = 'Obstacle sur la route'), 'Animal sur la chaussée', 1.0),
     ((SELECT category_id FROM incident_categories WHERE name = 'Obstacle sur la route'), 'Objet sur la route', 0.95);
-
-
-
-
-INSERT INTO incidents (type_id, location)
-VALUES (
-           6,
-           ST_SetSRID(ST_MakePoint(0.7038658958513232, 47.41738403159333), 4326)
-       );
