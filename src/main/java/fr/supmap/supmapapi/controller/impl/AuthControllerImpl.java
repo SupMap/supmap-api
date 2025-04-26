@@ -76,7 +76,11 @@ public class AuthControllerImpl implements AuthController {
             u.setEmail(user.getEmail());
             u.setPasswordHash(PasswordManager.hashPassword(user.getPassword()));
             u.setCreationDate(new Date().toInstant());
-            u.setRole(roleRepository.findByName("Utilisateur"));
+            if (userRepository.count() == 0) {
+                u.setRole(roleRepository.findByName("Administrateur"));
+            } else {
+                u.setRole(roleRepository.findByName("Utilisateur"));
+            }
             u.setContribution(0);
             userRepository.save(u);
 

@@ -76,5 +76,5 @@ CREATE TABLE routes
     calculated_at  TIMESTAMP                   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     custom_model   VARCHAR(50),
     mode           VARCHAR(15)                 NOT NULL DEFAULT 'car',
-    active       BOOLEAN                        NOT NULL DEFAULT TRUE
+    active         BOOLEAN                     NOT NULL DEFAULT TRUE
 );
