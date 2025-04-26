@@ -68,7 +68,7 @@ public class IncidentControllerImpl implements IncidentController {
         newIncident.setExpirationDate(Instant.now().plusSeconds(3600));
 
         User user = GetUserAuthenticated();
-        if(user.getRole().getName().equals("Administrateur") && (user.getContribution() == null || user.getContribution() == 0)) {
+        if(!user.getRole().getName().equals("Administrateur") && (user.getContribution() == null || user.getContribution() == 0)) {
             user.setRole(roleRepository.findByName("Contributeur"));
         }
         user.setContribution(user.getContribution() + 1);

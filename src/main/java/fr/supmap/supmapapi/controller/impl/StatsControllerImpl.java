@@ -58,7 +58,7 @@ public class StatsControllerImpl implements StatsController {
         Instant now = Instant.now();
         StatsDto stats = new StatsDto();
 
-        stats.setOngoingTrips(routeRepository.countByTotalDurationIsNull());
+        stats.setOngoingTrips((long) routeRepository.findByActive(true).size());
         stats.setTripsToday(routeRepository.countByCalculatedAtBetween(startOfDay(), now));
         stats.setTripsThisWeek(routeRepository.countByCalculatedAtBetween(startOfWeek(), now));
         stats.setTripsThisMonth(routeRepository.countByCalculatedAtBetween(startOfMonth(), now));

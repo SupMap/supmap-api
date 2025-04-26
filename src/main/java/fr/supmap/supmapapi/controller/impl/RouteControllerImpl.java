@@ -78,11 +78,10 @@ public class RouteControllerImpl implements RouteController {
 
     private void desactivateRoute(User user) {
         Route route = routeRepository.findRouteByUserIdAndActive(user.getId(), true);
-        if (route == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Aucune route trouvée pour cet utilisateur");
+        if (route != null) {
+            route.setActive(false);
+            routeRepository.save(route);
         }
-        route.setActive(false);
-        routeRepository.save(route);
     }
 
 
