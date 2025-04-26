@@ -19,8 +19,9 @@ public class SupmapApiApplication {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins("*")
-                        .allowedMethods("GET", "POST", "DELETE", "PATCH");
+                        .allowedOrigins("http://localhost:5173")
+                        .allowedMethods("GET","POST","PUT","DELETE","OPTIONS")
+                        .allowCredentials(true);
             }
         };
     }
