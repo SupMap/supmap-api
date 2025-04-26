@@ -71,6 +71,7 @@ public class RouteControllerImpl implements RouteController {
         route.setEndLocation(GeoUtils.parsePoint(routeDto.getEndLocation()));
         route.setRouteGeometry(GeoUtils.decodePolylineToLineString(routeDto.getRoute()));
         route.setCalculatedAt(Instant.now());
+        route.setActive(true);
 
         routeRepository.save(route);
     }
