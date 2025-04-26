@@ -86,10 +86,10 @@ public class RouteControllerImpl implements RouteController {
 
 
     @Override
-    @Operation(description = "Permet de récuperer une route", summary = "Get Routes (Not yet implemented)")
+    @Operation(description = "Permet de récuperer une route active", summary = "Get Routes")
     public String getUserRoute(String origin) {
         User user = GetUserAuthenticated();
-        Route route = routeRepository.findByUserId(user.getId());
+        Route route = routeRepository.findRouteByUserIdAndActive(user.getId(), true);
         if (route == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Aucune route trouvée pour cet utilisateur");
         }
