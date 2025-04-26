@@ -11,6 +11,8 @@ public interface RouteRepository extends JpaRepository<Route, Integer> {
     long countByTotalDurationIsNull();
     long countByCalculatedAtBetween(Instant start, Instant end);
 
+    Route findRouteByUserIdAndActive(int userId, boolean active);
+
     @Query("SELECT COALESCE(AVG(r.totalDuration),0) FROM Route r WHERE r.totalDuration IS NOT NULL")
     Double averageTotalDuration();
 

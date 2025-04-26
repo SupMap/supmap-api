@@ -59,7 +59,7 @@ public class RouteControllerImpl implements RouteController {
     public void createRoute(RouteDto routeDto) {
         User user = GetUserAuthenticated();
 
-        this.deleteRoute(user);
+        this.desactivateRoute(user);
 
         Route route = new Route();
         route.setUser(user);
@@ -75,12 +75,13 @@ public class RouteControllerImpl implements RouteController {
         routeRepository.save(route);
     }
 
-    private void deleteRoute(User user) {
-        Route route = routeRepository.findByUserId(user.getId());
+    private void desactivateRoute(User user) {
+        Route route = routeRepository.findRouteByUserIdAndActive(user.getId(), true);
         if (route == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Aucune route trouvée pour cet utilisateur");
         }
-        routeRepository.delete(route);
+        route.setActive(false);
+        routeRepository.save(route);
     }
 
 

@@ -57,4 +57,7 @@ public class Route {
     @JdbcTypeCode(SqlTypes.GEOMETRY)
     @Column(name = "route_geometry", columnDefinition = "geography(LineString,4326) not null")
     private LineString routeGeometry;
+
+    @Column(name = "active")
+    private Boolean active;
 }
