@@ -48,8 +48,9 @@ public class User {
     @Column(name = "creation_date", nullable = false)
     private Instant creationDate;
 
+    @Size(max = 255)
     @Column(name = "oauth2_id")
-    private Integer oauth2Id;
+    private String oauth2Id;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

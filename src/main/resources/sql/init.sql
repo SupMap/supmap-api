@@ -43,7 +43,7 @@ CREATE TABLE users
     email         VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     creation_date TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    oauth2_id     INT,
+    oauth2_id     VARCHAR(255),
     role          INT          NOT NULL DEFAULT 1 REFERENCES roles (role_id),
     contribution  INT          NOT NULL DEFAULT 0
 );
