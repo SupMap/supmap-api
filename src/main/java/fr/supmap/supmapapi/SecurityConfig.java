@@ -34,6 +34,7 @@ public class SecurityConfig {
                                 "/login/oauth2/**"
                         ).permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/incidents").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/directions").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
