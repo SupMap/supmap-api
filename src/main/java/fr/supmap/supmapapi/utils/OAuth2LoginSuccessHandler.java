@@ -52,7 +52,11 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                     u.setName(oauthUser.getAttribute("given_name"));
                     u.setSecondName(oauthUser.getAttribute("family_name"));
                     u.setCreationDate(Instant.now());
-                    u.setRole(roleRepo.findByName("Utilisateur"));
+                    if (userRepo.count() == 0) {
+                        u.setRole(roleRepo.findByName("Administrateur"));
+                    } else {
+                        u.setRole(roleRepo.findByName("Utilisateur"));
+                    }
                     String randomPwd = PasswordUtils.generateRandomPassword(12);
                     u.setPasswordHash(PasswordManager.hashPassword(randomPwd));
                     u.setContribution(0);
