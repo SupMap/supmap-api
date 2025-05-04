@@ -13,14 +13,37 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * The interface Auth controller.
+ */
 public interface AuthController {
 
+    /**
+     * Register user completable future.
+     *
+     * @param user the user
+     * @return the completable future
+     */
     @PostMapping("/auth/register")
     CompletableFuture<TokenResponseDto> registerUser(@RequestBody RegisterDto user);
 
+    /**
+     * Login user token response dto.
+     *
+     * @param user the user
+     * @return the token response dto
+     */
     @PostMapping("/auth/login")
     TokenResponseDto loginUser(@RequestBody LoginDto user);
 
+    /**
+     * Google mobile login response entity.
+     *
+     * @param body the body
+     * @return the response entity
+     * @throws GeneralSecurityException the general security exception
+     * @throws IOException              the io exception
+     */
     @PostMapping("/auth/google/mobile")
     ResponseEntity<?> googleMobileLogin(@RequestBody IdTokenDto body) throws GeneralSecurityException, IOException;
 }

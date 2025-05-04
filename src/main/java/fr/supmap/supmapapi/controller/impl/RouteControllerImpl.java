@@ -96,6 +96,10 @@ public class RouteControllerImpl implements RouteController {
 
         String destination = route.getEndLocation().getY() + "," + route.getEndLocation().getX();
 
+        if (origin == null) {
+            origin = route.getStartLocation().getY() + "," + route.getStartLocation().getX();
+        }
+
         return directionController.getDirection(origin,
                                                 route.getMode(),
                                                 destination,
