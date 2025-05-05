@@ -45,5 +45,5 @@ public interface AuthController {
      * @throws IOException              the io exception
      */
     @PostMapping("/auth/google/mobile")
-    ResponseEntity<?> googleMobileLogin(@RequestBody IdTokenDto body) throws GeneralSecurityException, IOException;
+    TokenResponseDto googleMobileLogin(@RequestBody IdTokenDto body);
 }

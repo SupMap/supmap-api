@@ -95,53 +95,47 @@ public class AuthControllerImpl implements AuthController {
 
     @Override
     @Operation(summary = "Login avec Google")
-    public ResponseEntity<?> googleMobileLogin(IdTokenDto body) throws GeneralSecurityException, IOException {
-        // 1) Vérifier l’ID Token
-        var verifier = new GoogleIdTokenVerifier
-                .Builder(new NetHttpTransport(), new GsonFactory())
-                .setAudience(List.of("TON_WEB_CLIENT_ID.apps.googleusercontent.com"))
-                .build();
+    public TokenResponseDto googleMobileLogin(IdTokenDto idTokenDto) {
 
-        GoogleIdToken idToken = verifier.verify(body.idToken());
-        if (idToken == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        log.info("POST /api/auth/google/mobile");
+
+        try {
+            GoogleIdToken idToken = GoogleIdToken.parse(new GsonFactory(), idTokenDto.idToken());
+
+            var payload = idToken.getPayload();
+            String sub    = payload.getSubject();
+            String email  = payload.getEmail();
+            String given  = (String) payload.get("given_name");
+            String family = (String) payload.get("family_name");
+
+            User user = userRepository.findByOauth2Id(sub)
+                    .or(() -> userRepository.findByEmail(email))
+                    .orElseGet(() -> {
+                        User u = new User();
+                        u.setEmail(email);
+                        u.setUsername(email);
+                        u.setName(given);
+                        u.setSecondName(family);
+                        u.setCreationDate(Instant.now());
+                        u.setRole(roleRepository.findByName("Utilisateur"));
+                        String pwd = PasswordUtils.generateRandomPassword(12);
+                        u.setPasswordHash(PasswordManager.hashPassword(pwd));
+                        u.setContribution(0);
+                        u.setOauth2Id(sub);
+                        return userRepository.save(u);
+                    });
+
+            if (user.getOauth2Id() == null) {
+                user.setOauth2Id(sub);
+                userRepository.save(user);
+            }
+
+            String token = tokenManager.createToken(user.getId());
+            return TokenResponseDto.builder().token(token).build();
+
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Erreur de vérification du token", e);
         }
-
-        // 2) Récupérer les infos
-        var payload = idToken.getPayload();
-        String sub = payload.getSubject();
-        String email = payload.getEmail();
-        String given = (String) payload.get("given_name");
-        String family = (String) payload.get("family_name");
-
-        // 3) Find or create user (même logique que dans OAuth2LoginSuccessHandler)
-        User user = userRepository.findByOauth2Id(sub)
-                .or(() -> userRepository.findByEmail(email))
-                .orElseGet(() -> {
-                    User u = new User();
-                    u.setEmail(email);
-                    u.setUsername(email);
-                    u.setName(given);
-                    u.setSecondName(family);
-                    u.setCreationDate(Instant.now());
-                    u.setRole(roleRepository.findByName("Utilisateur"));
-                    String pwd = PasswordUtils.generateRandomPassword(12);
-                    u.setPasswordHash(PasswordManager.hashPassword(pwd));
-                    u.setContribution(0);
-                    u.setOauth2Id(sub);
-                    return userRepository.save(u);
-                });
-
-        if (user.getOauth2Id() == null) {
-            user.setOauth2Id(sub);
-            userRepository.save(user);
-        }
-
-        // 4) Générer ton JWT
-        String jwt = tokenManager.createToken(user.getId()).replace("Bearer ", "");
-
-        // 5) Retourner le token dans le corps
-        return ResponseEntity.ok(Map.of("token", jwt));
     }
 }
 
