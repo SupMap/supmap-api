@@ -24,6 +24,6 @@ public class StatsDto {
     private Long incidentsThisYear;
     private Double averageTripDuration;
     private Double averageTripDistance;
-    private Map<Integer, Long> incidentsPerHour;
-    private Map<Integer, Long> tripsPerDay;
+    private Map<String, Long> incidentsPerHour;
+    private Map<String, Long> tripsPerDay;
 }

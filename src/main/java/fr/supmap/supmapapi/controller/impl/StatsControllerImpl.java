@@ -15,10 +15,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.DayOfWeek;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -26,22 +24,28 @@ import java.util.Map;
 @Tag(name = "Gestion des statistiques")
 public class StatsControllerImpl implements StatsController {
 
+    private static final ZoneId ZONE = ZoneId.of("Europe/Paris");
+    private static final DateTimeFormatter HOUR_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final DateTimeFormatter DAY_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
+
     private final RouteRepository routeRepository;
     private final IncidentRepository incidentRepository;
     private final UserRepository userRepository;
 
-    public StatsControllerImpl(RouteRepository routeRepository, IncidentRepository incidentRepository, UserRepository userRepository) {
+    public StatsControllerImpl(RouteRepository routeRepository,
+                               IncidentRepository incidentRepository,
+                               UserRepository userRepository) {
         this.routeRepository = routeRepository;
         this.incidentRepository = incidentRepository;
         this.userRepository = userRepository;
     }
 
-    private User GetUserAuthenticated() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || "anonymousUser".equals(authentication.getName())) {
+    private User getUserAuthenticated() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || "anonymousUser".equals(auth.getName())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur non authentifié");
         }
-        int userId = Integer.parseInt(authentication.getName());
+        int userId = Integer.parseInt(auth.getName());
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur non trouvé"));
     }
@@ -49,15 +53,12 @@ public class StatsControllerImpl implements StatsController {
     @Override
     @Operation(description = "Permet de récupérer les statistiques", summary = "Get Stats")
     public StatsDto getStats() {
-        User user = GetUserAuthenticated();
+        User user = getUserAuthenticated();
         if (!"Administrateur".equals(user.getRole().getName())) {
             throw new NotFoundException("Ressource non trouvée");
         }
 
         Instant now = Instant.now();
-        ZoneId zone = ZoneId.systemDefault();
-        LocalDate today = LocalDate.now();
-
         StatsDto stats = new StatsDto();
 
         stats.setOngoingTrips((long) routeRepository.findByActive(true).size());
@@ -75,52 +76,64 @@ public class StatsControllerImpl implements StatsController {
         stats.setAverageTripDuration(routeRepository.averageTotalDuration());
         stats.setAverageTripDistance(routeRepository.averageTotalDistance());
 
-        Map<Integer, Long> incidentsByHour = new LinkedHashMap<>();
-        for (int h = 0; h < 24; h++) {
-            Instant start = today.atStartOfDay(zone).plusHours(h).toInstant();
-            Instant end   = today.atStartOfDay(zone).plusHours(h + 1).toInstant();
-            long count = incidentRepository.countByCreatedAtBetween(start, end);
-            incidentsByHour.put(h, count);
-        }
-        stats.setIncidentsPerHour(incidentsByHour);
-
-        Map<Integer, Long> tripsByDay = new LinkedHashMap<>();
-        LocalDate firstOfMonth = today.withDayOfMonth(1);
-        int daysInMonth = today.lengthOfMonth();
-        for (int d = 1; d <= daysInMonth; d++) {
-            LocalDate date = firstOfMonth.plusDays(d - 1);
-            Instant start = date.atStartOfDay(zone).toInstant();
-            Instant end   = date.plusDays(1).atStartOfDay(zone).toInstant();
-            long count = routeRepository.countByCalculatedAtBetween(start, end);
-            tripsByDay.put(d, count);
-        }
-        stats.setTripsPerDay(tripsByDay);
+        stats.setTripsPerDay(buildTripsLast30DaysStats(ZONE));
+        stats.setIncidentsPerHour(buildIncidentsPerHourStats(ZONE));
 
         return stats;
     }
 
+    private Map<String, Long> buildTripsLast30DaysStats(ZoneId zone) {
+        Map<String, Long> tripsByDay = new LinkedHashMap<>();
+        LocalDate today = LocalDate.now(zone);
+
+        for (int i = 29; i >= 0; i--) {
+            LocalDate date = today.minusDays(i);
+            Instant start = date.atStartOfDay(zone).toInstant();
+            Instant end = date.plusDays(1).atStartOfDay(zone).toInstant();
+            long count = routeRepository.countByCalculatedAtBetween(start, end);
+            tripsByDay.put(date.format(DAY_FORMATTER), count);
+        }
+        return tripsByDay;
+    }
+
+    private Map<String, Long> buildIncidentsPerHourStats(ZoneId zone) {
+        Map<String, Long> incidentsByHour = new LinkedHashMap<>();
+        LocalDate today = LocalDate.now(zone);
+        ZonedDateTime dayStartZdt = today.atStartOfDay(zone);
+
+        for (int h = 0; h < 24; h++) {
+            ZonedDateTime slotStart = dayStartZdt.plusHours(h);
+            Instant start = slotStart.toInstant();
+            Instant end = slotStart.plusHours(1).toInstant();
+            String key = slotStart.format(HOUR_FORMATTER);
+            long count = incidentRepository.countByCreatedAtBetween(start, end);
+            incidentsByHour.put(key, count);
+        }
+        return incidentsByHour;
+    }
+
     private Instant startOfDay() {
-        return LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant();
+        return LocalDate.now(ZONE).atStartOfDay(ZONE).toInstant();
     }
 
     private Instant startOfWeek() {
-        return LocalDate.now()
+        return LocalDate.now(ZONE)
                 .with(DayOfWeek.MONDAY)
-                .atStartOfDay(ZoneId.systemDefault())
+                .atStartOfDay(ZONE)
                 .toInstant();
     }
 
     private Instant startOfMonth() {
-        return LocalDate.now()
+        return LocalDate.now(ZONE)
                 .withDayOfMonth(1)
-                .atStartOfDay(ZoneId.systemDefault())
+                .atStartOfDay(ZONE)
                 .toInstant();
     }
 
     private Instant startOfYear() {
-        return LocalDate.now()
+        return LocalDate.now(ZONE)
                 .withDayOfYear(1)
-                .atStartOfDay(ZoneId.systemDefault())
+                .atStartOfDay(ZONE)
                 .toInstant();
     }
 }
