@@ -19,7 +19,8 @@ import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestController
 @Tag(name = "Gestion des statistiques")
@@ -41,8 +42,7 @@ public class StatsControllerImpl implements StatsController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur non authentifié");
         }
         int userId = Integer.parseInt(authentication.getName());
-
-        return userRepository.findById(Math.toIntExact(userId))
+        return userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur non trouvé"));
     }
 
@@ -50,12 +50,14 @@ public class StatsControllerImpl implements StatsController {
     @Operation(description = "Permet de récupérer les statistiques", summary = "Get Stats")
     public StatsDto getStats() {
         User user = GetUserAuthenticated();
-
-        if (!user.getRole().getName().equals("Administrateur")) {
+        if (!"Administrateur".equals(user.getRole().getName())) {
             throw new NotFoundException("Ressource non trouvée");
         }
 
         Instant now = Instant.now();
+        ZoneId zone = ZoneId.systemDefault();
+        LocalDate today = LocalDate.now();
+
         StatsDto stats = new StatsDto();
 
         stats.setOngoingTrips((long) routeRepository.findByActive(true).size());
@@ -73,6 +75,27 @@ public class StatsControllerImpl implements StatsController {
         stats.setAverageTripDuration(routeRepository.averageTotalDuration());
         stats.setAverageTripDistance(routeRepository.averageTotalDistance());
 
+        Map<Integer, Long> incidentsByHour = new LinkedHashMap<>();
+        for (int h = 0; h < 24; h++) {
+            Instant start = today.atStartOfDay(zone).plusHours(h).toInstant();
+            Instant end   = today.atStartOfDay(zone).plusHours(h + 1).toInstant();
+            long count = incidentRepository.countByCreatedAtBetween(start, end);
+            incidentsByHour.put(h, count);
+        }
+        stats.setIncidentsPerHour(incidentsByHour);
+
+        Map<Integer, Long> tripsByDay = new LinkedHashMap<>();
+        LocalDate firstOfMonth = today.withDayOfMonth(1);
+        int daysInMonth = today.lengthOfMonth();
+        for (int d = 1; d <= daysInMonth; d++) {
+            LocalDate date = firstOfMonth.plusDays(d - 1);
+            Instant start = date.atStartOfDay(zone).toInstant();
+            Instant end   = date.plusDays(1).atStartOfDay(zone).toInstant();
+            long count = routeRepository.countByCalculatedAtBetween(start, end);
+            tripsByDay.put(d, count);
+        }
+        stats.setTripsPerDay(tripsByDay);
+
         return stats;
     }
 
@@ -81,18 +104,23 @@ public class StatsControllerImpl implements StatsController {
     }
 
     private Instant startOfWeek() {
-        LocalDate today = LocalDate.now();
-        return today.with(DayOfWeek.MONDAY)
-                .atStartOfDay(ZoneId.systemDefault()).toInstant();
+        return LocalDate.now()
+                .with(DayOfWeek.MONDAY)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant();
     }
 
     private Instant startOfMonth() {
-        return LocalDate.now().withDayOfMonth(1)
-                .atStartOfDay(ZoneId.systemDefault()).toInstant();
+        return LocalDate.now()
+                .withDayOfMonth(1)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant();
     }
 
     private Instant startOfYear() {
-        return LocalDate.now().withDayOfYear(1)
-                .atStartOfDay(ZoneId.systemDefault()).toInstant();
+        return LocalDate.now()
+                .withDayOfYear(1)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant();
     }
 }

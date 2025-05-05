@@ -22,8 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -50,7 +48,7 @@ public class AuthControllerImpl implements AuthController {
                               TokenManager tokenManager) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
-        this.tokenManager   = tokenManager;
+        this.tokenManager = tokenManager;
     }
 
     @Override
@@ -111,10 +109,10 @@ public class AuthControllerImpl implements AuthController {
 
         // 2) Récupérer les infos
         var payload = idToken.getPayload();
-        String sub   = payload.getSubject();
+        String sub = payload.getSubject();
         String email = payload.getEmail();
         String given = (String) payload.get("given_name");
-        String family= (String) payload.get("family_name");
+        String family = (String) payload.get("family_name");
 
         // 3) Find or create user (même logique que dans OAuth2LoginSuccessHandler)
         User user = userRepository.findByOauth2Id(sub)

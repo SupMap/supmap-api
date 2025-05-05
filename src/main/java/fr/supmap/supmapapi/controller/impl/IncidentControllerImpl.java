@@ -21,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,7 +69,7 @@ public class IncidentControllerImpl implements IncidentController {
         newIncident.setExpirationDate(Instant.now().plusSeconds(3600));
 
         User user = GetUserAuthenticated();
-        if(!user.getRole().getName().equals("Administrateur") && (user.getContribution() == null || user.getContribution() == 0)) {
+        if (!user.getRole().getName().equals("Administrateur") && (user.getContribution() == null || user.getContribution() == 0)) {
             user.setRole(roleRepository.findByName("Contributeur"));
         }
         user.setContribution(user.getContribution() + 1);
@@ -93,7 +94,7 @@ public class IncidentControllerImpl implements IncidentController {
         List<Incident> incidents = incidentRepository.findAll();
         List<IncidentResponseDto> incidentDtoList = new ArrayList<>();
         for (Incident incident : incidents) {
-            if(incident.getExpirationDate() != null && !incident.getExpirationDate().isBefore(Instant.now())) {
+            if (incident.getExpirationDate() != null && !incident.getExpirationDate().isBefore(Instant.now())) {
                 IncidentResponseDto dto = IncidentResponseDto.builder()
                         .id(incident.getId())
                         .typeId(incident.getType().getId())
@@ -126,7 +127,7 @@ public class IncidentControllerImpl implements IncidentController {
 
     @Override
     @Operation(description = "Permet de noter un incident", summary = "Rate Incident")
-    public  ResponseEntity<String> rateIncident(Integer id, boolean positive) {
+    public ResponseEntity<String> rateIncident(Integer id, boolean positive) {
         log.info("POST /incident/{}/rate?positive={}", id, positive);
         Incident incident = incidentRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Incident non trouvé"));

@@ -101,9 +101,9 @@ public class RouteControllerImpl implements RouteController {
         }
 
         return directionController.getDirection(origin,
-                                                route.getMode(),
-                                                destination,
-                                                route.getCustomModel());
+                route.getMode(),
+                destination,
+                route.getCustomModel());
     }
 
 

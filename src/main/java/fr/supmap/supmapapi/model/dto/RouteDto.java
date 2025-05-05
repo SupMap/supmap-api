@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.locationtech.jts.geom.Point;
 
 @Builder
 @Data
@@ -12,8 +11,6 @@ import org.locationtech.jts.geom.Point;
 @NoArgsConstructor
 public class RouteDto {
     private String Route;
-
-
     private Double totalDuration;
     private Double totalDistance;
     private String customModel;
