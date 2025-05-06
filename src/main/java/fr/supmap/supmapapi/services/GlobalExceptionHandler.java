@@ -45,7 +45,6 @@ public class GlobalExceptionHandler {
             this.message = message;
         }
 
-        // Getters et Setters
         public HttpStatus getStatus() {
             return status;
         }

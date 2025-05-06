@@ -20,7 +20,7 @@ import java.time.Instant;
 
 
 /**
- * The type Route controller.
+ * The type {@code RouteControllerImpl} is an implementation of the {@link RouteController} interface.
  */
 @RestController
 @Tag(name = "Gestion des routes")

@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The type Direction controller.
+ * The type {@code DirectionControllerImpl} is an implementation of the {@link DirectionController} interface.
  */
 @Slf4j
 @RestController
@@ -42,11 +42,7 @@ public class DirectionControllerImpl implements DirectionController {
     @Value("${graphhopper.base-url}")
     private String graphhopperBaseUrl;
 
-    /**
-     * Instantiates a new Direction controller.
-     *
-     * @param incidentRepository the incident repository
-     */
+
     public DirectionControllerImpl(IncidentRepository incidentRepository) {
         this.incidentRepository = incidentRepository;
     }
@@ -135,7 +131,6 @@ public class DirectionControllerImpl implements DirectionController {
                 dto.setEconomical(responseAlt);
             }
 
-            // No toll route
             Map<String, Object> bodyNoToll = buildRequestBody(points, mode, false, true);
             bodyNoToll.put("custom_model", generateCustomModelFromIncidents(true));
 
@@ -164,15 +159,6 @@ public class DirectionControllerImpl implements DirectionController {
     }
 
 
-    /*
-     * Méthode pour obtenir un itinéraire de secours en cas d'erreur avec le modèle personnalisé
-     *
-     * @param origin        L'origine de l'itinéraire
-     * @param mode          Le mode de transport
-     * @param destination   La destination de l'itinéraire
-     * @param isAlternative Indique si l'itinéraire est alternatif
-     * @return L'itinéraire de secours au format JSON
-     * */
     private String getSecureDirection(String origin, String mode, String destination, Boolean isAlternative) {
         String originCoordinates = getCoordinates(origin);
         String destinationCoordinates = getCoordinates(destination);

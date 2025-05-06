@@ -1,4 +1,3 @@
-// JwtTokenFilter.java
 package fr.supmap.supmapapi.services;
 
 import jakarta.servlet.FilterChain;

@@ -13,6 +13,7 @@ public class PasswordUtils {
 
     /**
      * Génère un mot de passe alphanumérique aléatoire.
+     *
      * @param length longueur souhaitée du mot de passe
      * @return mot de passe clair
      */
@@ -25,7 +26,9 @@ public class PasswordUtils {
         return sb.toString();
     }
 
-    /** version avec longueur par défaut (16) */
+    /**
+     * version avec longueur par défaut (16)
+     */
     public static String generateRandomPassword() {
         return generateRandomPassword(DEFAULT_LENGTH);
     }

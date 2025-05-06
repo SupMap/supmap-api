@@ -20,6 +20,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * The type {@code StatsControllerImpl} is an implementation of the {@link StatsController} interface.
+ */
 @RestController
 @Tag(name = "Gestion des statistiques")
 public class StatsControllerImpl implements StatsController {

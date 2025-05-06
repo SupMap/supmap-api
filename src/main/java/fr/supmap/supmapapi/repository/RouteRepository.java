@@ -8,8 +8,10 @@ import java.time.Instant;
 import java.util.List;
 
 public interface RouteRepository extends JpaRepository<Route, Integer> {
-    Route findByUserId(int userId);
+    List<Route> findByUserId(int userId);
+
     long countByTotalDurationIsNull();
+
     long countByCalculatedAtBetween(Instant start, Instant end);
 
     Route findRouteByUserIdAndActive(int userId, boolean active);

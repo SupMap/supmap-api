@@ -1,4 +1,3 @@
-// AuthController.java
 package fr.supmap.supmapapi.controller;
 
 import fr.supmap.supmapapi.model.dto.IdTokenDto;

@@ -17,4 +17,5 @@ public class RouteDto {
     private String mode;
     private String startLocation;
     private String endLocation;
+    private Boolean active;
 }

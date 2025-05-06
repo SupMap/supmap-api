@@ -19,10 +19,10 @@ public interface DirectionController {
      * @return the direction
      */
     @GetMapping("/direction")
-    String getDirection(@RequestParam(value="origin") String origin,
-                        @RequestParam(value="mode", defaultValue="car") String mode,
-                        @RequestParam(value="destination") String destination,
-                        @RequestParam(value="custom-model", required = false) String customModel);
+    String getDirection(@RequestParam(value = "origin") String origin,
+                        @RequestParam(value = "mode", defaultValue = "car") String mode,
+                        @RequestParam(value = "destination") String destination,
+                        @RequestParam(value = "custom-model", required = false) String customModel);
 
     /**
      * Gets directions.
@@ -33,7 +33,7 @@ public interface DirectionController {
      * @return the directions
      */
     @GetMapping("/directions")
-    DirectionsDto getDirections(@RequestParam(value="origin") String origin,
-                                @RequestParam(value="mode", defaultValue="car") String mode,
-                                @RequestParam(value="destination") String destination);
+    DirectionsDto getDirections(@RequestParam(value = "origin") String origin,
+                                @RequestParam(value = "mode", defaultValue = "car") String mode,
+                                @RequestParam(value = "destination") String destination);
 }

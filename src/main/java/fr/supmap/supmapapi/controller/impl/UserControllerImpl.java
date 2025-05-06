@@ -1,14 +1,16 @@
-// UserControllerImpl.java
 package fr.supmap.supmapapi.controller.impl;
 
 import fr.supmap.supmapapi.controller.UserController;
+import fr.supmap.supmapapi.model.dto.RouteDto;
 import fr.supmap.supmapapi.model.dto.userDtos.UserMinimalInfoDto;
 import fr.supmap.supmapapi.model.dto.userDtos.UserUpdateDto;
+import fr.supmap.supmapapi.model.entity.table.Route;
 import fr.supmap.supmapapi.model.entity.table.User;
-import fr.supmap.supmapapi.repository.RoleRepository;
+import fr.supmap.supmapapi.repository.RouteRepository;
 import fr.supmap.supmapapi.repository.UserRepository;
 import fr.supmap.supmapapi.services.exceptions.NotAuthorizeException;
 import fr.supmap.supmapapi.services.exceptions.NotFoundException;
+import fr.supmap.supmapapi.utils.GeoUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
@@ -24,17 +26,20 @@ import java.util.List;
 
 import static fr.supmap.supmapapi.services.PasswordManager.hashPassword;
 
+/**
+ * The type {@code UserControllerImpl} is an implementation of the {@link UserController} interface.
+ */
 @RestController
 @Tag(name = "Gestion du User")
 public class UserControllerImpl implements UserController {
 
     private final Logger log = LoggerFactory.getLogger(UserControllerImpl.class);
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
+    private final RouteRepository routeRepository;
 
-    public UserControllerImpl(UserRepository userRepository, RoleRepository roleRepository) {
+    public UserControllerImpl(UserRepository userRepository, RouteRepository routeRepository) {
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
+        this.routeRepository = routeRepository;
     }
 
     private User GetUserAuthenticated() {
@@ -112,5 +117,27 @@ public class UserControllerImpl implements UserController {
                 .secondName(updatedUser.getSecondName())
                 .email(updatedUser.getEmail())
                 .build();
+    }
+
+    @Override
+    @Operation(description = "Permet de récupérer les itinéraires d'un utilisateur", summary = "Get User Routes")
+    public List<RouteDto> getAllRoutes() {
+        User user = GetUserAuthenticated();
+        log.info("GET /users/{}/routes", user.getId());
+        List<Route> routes = routeRepository.findByUserId(user.getId());
+        if (routes.isEmpty()) {
+            throw new NotFoundException("Aucun itinéraire trouvé pour cet utilisateur");
+        }
+        return routes.stream()
+                .map(route -> new RouteDto(
+                        GeoUtils.encodeLineStringToPolyline(route.getRouteGeometry()),
+                        route.getTotalDuration(),
+                        route.getTotalDistance(),
+                        route.getCustomModel(),
+                        route.getMode(),
+                        route.getStartLocation().toString(),
+                        route.getEndLocation().toString(),
+                        route.getActive()
+                )).toList();
     }
 }

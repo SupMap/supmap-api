@@ -1,5 +1,6 @@
 package fr.supmap.supmapapi.controller;
 
+import fr.supmap.supmapapi.model.dto.RouteDto;
 import fr.supmap.supmapapi.model.dto.userDtos.UserMinimalInfoDto;
 import fr.supmap.supmapapi.model.dto.userDtos.UserUpdateDto;
 import fr.supmap.supmapapi.model.entity.table.User;
@@ -50,4 +51,12 @@ public interface UserController {
      */
     @PatchMapping("/user")
     UserMinimalInfoDto updateUser(@RequestBody UserUpdateDto userUpdateDto);
+
+    /**
+     * Gets user routes.
+     *
+     * @return the all routes of the user
+     */
+    @GetMapping("/user/allroutes")
+    List<RouteDto> getAllRoutes();
 }

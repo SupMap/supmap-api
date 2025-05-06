@@ -26,6 +26,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * The type {@code IncidentControllerImpl} is an implementation of the {@link IncidentController} interface.
+ */
 @RestController
 @Tag(name = "Incidents")
 public class IncidentControllerImpl implements IncidentController {

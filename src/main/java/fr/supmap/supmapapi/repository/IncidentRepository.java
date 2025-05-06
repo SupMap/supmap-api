@@ -8,6 +8,8 @@ import java.util.List;
 
 public interface IncidentRepository extends JpaRepository<Incident, Integer> {
     List<Incident> findByConfirmedByUserId(Integer userId);
+
     long countByExpirationDateAfter(Instant now);
+
     long countByCreatedAtBetween(Instant start, Instant end);
 }

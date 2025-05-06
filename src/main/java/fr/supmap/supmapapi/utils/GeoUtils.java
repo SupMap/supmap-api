@@ -1,10 +1,6 @@
 package fr.supmap.supmapapi.utils;
 
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.PrecisionModel;
+import org.locationtech.jts.geom.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +8,47 @@ import java.util.List;
 public class GeoUtils {
 
     private static final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+
+    public static String encodeLineStringToPolyline(LineString line) {
+        return encodeCoordinates(line.getCoordinates(), 1e5);
+    }
+
+    private static String encodeCoordinates(Coordinate[] coords, double precision) {
+        StringBuilder result = new StringBuilder();
+        int prevLat = 0, prevLng = 0;
+
+        for (Coordinate coord : coords) {
+            int lat = (int) Math.round(coord.getY() * precision);
+            int lng = (int) Math.round(coord.getX() * precision);
+
+            int dlat = lat - prevLat;
+            int dlng = lng - prevLng;
+
+            encodeSignedNumber(dlat, result);
+            encodeSignedNumber(dlng, result);
+
+            prevLat = lat;
+            prevLng = lng;
+        }
+        return result.toString();
+    }
+
+    private static void encodeSignedNumber(int num, StringBuilder sb) {
+        int sgnNum = num << 1;
+        if (num < 0) {
+            sgnNum = ~sgnNum;
+        }
+        encodeUnsignedNumber(sgnNum, sb);
+    }
+
+    private static void encodeUnsignedNumber(int num, StringBuilder sb) {
+        while (num >= 0x20) {
+            int nextValue = (0x20 | (num & 0x1f)) + 63;
+            sb.append((char) (nextValue));
+            num >>= 5;
+        }
+        sb.append((char) (num + 63));
+    }
 
     public static Point createPoint(Double latitude, Double longitude) {
         return geometryFactory.createPoint(new Coordinate(longitude, latitude));
@@ -36,7 +73,6 @@ public class GeoUtils {
         while (index < encoded.length()) {
             int b, shift = 0, result = 0;
 
-            // Décodage latitude
             do {
                 b = encoded.charAt(index++) - 63;
                 result |= (b & 0x1F) << shift;
@@ -45,7 +81,6 @@ public class GeoUtils {
             int dlat = ((result & 1) != 0) ? ~(result >> 1) : (result >> 1);
             lat += dlat;
 
-            // Décodage longitude
             shift = 0;
             result = 0;
             do {
@@ -58,7 +93,7 @@ public class GeoUtils {
 
             double latitude = lat / precision;
             double longitude = lng / precision;
-            coordinates.add(new Coordinate(longitude, latitude)); // Attention: lon, lat (X,Y)
+            coordinates.add(new Coordinate(longitude, latitude));
         }
 
         return coordinates;

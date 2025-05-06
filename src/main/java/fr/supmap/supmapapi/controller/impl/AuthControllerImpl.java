@@ -1,9 +1,6 @@
-// AuthControllerImpl.java
 package fr.supmap.supmapapi.controller.impl;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
-import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import fr.supmap.supmapapi.controller.AuthController;
 import fr.supmap.supmapapi.model.dto.IdTokenDto;
@@ -21,19 +18,18 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.time.Instant;
 import java.util.Date;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * The type {@code AuthControllerImpl} is an implementation of the {@link AuthController} interface.
+ */
 @RestController
 @Tag(name = "Gestion de l'authentification")
 public class AuthControllerImpl implements AuthController {
@@ -103,9 +99,9 @@ public class AuthControllerImpl implements AuthController {
             GoogleIdToken idToken = GoogleIdToken.parse(new GsonFactory(), idTokenDto.idToken());
 
             var payload = idToken.getPayload();
-            String sub    = payload.getSubject();
-            String email  = payload.getEmail();
-            String given  = (String) payload.get("given_name");
+            String sub = payload.getSubject();
+            String email = payload.getEmail();
+            String given = (String) payload.get("given_name");
             String family = (String) payload.get("family_name");
 
             User user = userRepository.findByOauth2Id(sub)
