@@ -9,6 +9,8 @@ import java.util.List;
 public interface IncidentRepository extends JpaRepository<Incident, Integer> {
     List<Incident> findByConfirmedByUserId(Integer userId);
 
+    List<Incident> findByExpirationDateAfter(Instant now);
+
     long countByExpirationDateAfter(Instant now);
 
     long countByCreatedAtBetween(Instant start, Instant end);

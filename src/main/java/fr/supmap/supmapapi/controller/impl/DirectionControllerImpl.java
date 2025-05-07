@@ -252,7 +252,7 @@ public class DirectionControllerImpl implements DirectionController {
 
     private Map<String, Object> generateCustomModelFromIncidents(Boolean noToll) {
         try {
-            List<Incident> incidents = incidentRepository.findAll();
+            List<Incident> incidents = incidentRepository.findByExpirationDateAfter(java.time.Instant.now());
             ArrayNode allFeatures = mapper.createArrayNode();
             ArrayNode speedRules = mapper.createArrayNode();
             ArrayNode priorityRules = mapper.createArrayNode();
